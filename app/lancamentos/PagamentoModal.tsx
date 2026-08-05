@@ -33,6 +33,10 @@ export function PagamentoModal({
       <form
         action={async (formData) => {
           setEnviando(true);
+          // Uploads before creating the pagamento row (same non-transactional
+          // tradeoff as the permuta item in pagamentoActions.ts): if
+          // registrarPagamentoAction fails after this succeeds, the file is
+          // orphaned in Storage with nothing pointing at it. Accepted for v1.
           if (arquivo) {
             const path = await uploadComprovante(arquivo, lancamento.id);
             formData.set("comprovante_path", path);
@@ -109,7 +113,16 @@ export function PagamentoModal({
           <input
             type="file"
             accept="image/*,application/pdf"
-            onChange={(e) => setArquivo(e.target.files?.[0] ?? null)}
+            onChange={(e) => {
+              const file = e.target.files?.[0] ?? null;
+              if (file && file.size > 10 * 1024 * 1024) {
+                alert("Arquivo maior que 10MB. Escolha um arquivo menor.");
+                e.target.value = "";
+                setArquivo(null);
+                return;
+              }
+              setArquivo(file);
+            }}
             className="w-full text-sm"
           />
         </div>
