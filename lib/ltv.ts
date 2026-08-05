@@ -7,6 +7,11 @@ export type MetricasCliente = {
   frequencia: number;
 };
 
+// A lancamento counts toward frequencia/ltv as soon as it has any payment
+// (totalPago > 0), even if only partially paid - so a still-open partial
+// payment lowers ticketMedio the same as a fully settled sale of that size.
+// This favors "activity so far" over "only completed sales"; revisit if the
+// store wants LTV to reflect settled revenue exclusively.
 export function metricasCliente(
   clienteId: string,
   lancamentos: LancamentoRow[],
