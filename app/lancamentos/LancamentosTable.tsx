@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useMemo, useState } from "react";
+import { Pencil, Paperclip, ChevronRight, ChevronDown } from "lucide-react";
 import { StatusTag } from "@/components/StatusTag";
 import { saldo, status as calcStatus, totalPago } from "@/lib/calculations";
 import { money, formatDataBR, hoje } from "@/lib/format";
@@ -122,20 +123,21 @@ export function LancamentosTable({
       <table className="w-full text-sm border-collapse">
         <thead>
           <tr className="text-left text-[var(--text-dim)] text-xs uppercase border-b border-[var(--border)]">
-            <th className="py-2 w-6"></th>
+            <th className="py-2 w-10">Anexos</th>
             <th>Vencimento</th>
             <th>Descrição</th>
             <th>Categoria</th>
             <th>Situação</th>
             <th className="text-right">Valor</th>
             <th className="text-right">Falta</th>
-            <th></th>
+            <th className="text-right">Ações</th>
           </tr>
         </thead>
         <tbody>
           {linhas.map(({ lancamento, status, falta }) => {
             const pagamentosDoLancamento = pagamentos.filter((p) => p.lancamento_id === lancamento.id);
             const estaExpandido = expandido === lancamento.id;
+            const totalComprovantes = pagamentosDoLancamento.filter((p) => p.comprovante_url).length;
 
             return (
               <Fragment key={lancamento.id}>
@@ -150,14 +152,25 @@ export function LancamentosTable({
                     {pagamentosDoLancamento.length > 0 && (
                       <button
                         type="button"
-                        aria-label={estaExpandido ? "Recolher pagamentos" : "Ver pagamentos"}
+                        aria-label={estaExpandido ? "Recolher pagamentos" : "Ver pagamentos e anexos"}
+                        title={
+                          totalComprovantes > 0
+                            ? `${totalComprovantes} comprovante(s)`
+                            : "Ver pagamentos"
+                        }
                         onClick={(e) => {
                           e.stopPropagation();
                           setExpandido(estaExpandido ? null : lancamento.id);
                         }}
-                        className="w-5 h-5 flex items-center justify-center text-[var(--text-dim)]"
+                        className="flex items-center gap-1 text-[var(--text-dim)] hover:text-[var(--text)]"
                       >
-                        {estaExpandido ? "▾" : "▸"}
+                        {estaExpandido ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                        {totalComprovantes > 0 && (
+                          <span className="flex items-center gap-0.5 text-[10px]">
+                            <Paperclip size={12} />
+                            {totalComprovantes}
+                          </span>
+                        )}
                       </button>
                     )}
                   </td>
@@ -170,17 +183,32 @@ export function LancamentosTable({
                   <td className="text-right">{money(lancamento.valor)}</td>
                   <td className="text-right font-semibold text-[var(--accent-red)]">{money(falta)}</td>
                   <td className="text-right">
-                    {falta > 0.004 && (
+                    <div className="flex justify-end items-center gap-2">
+                      {falta > 0.004 && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPagando({ lancamento, falta });
+                          }}
+                          className="px-3 py-1 text-xs bg-[var(--accent-green)] text-[var(--bg)] font-semibold rounded"
+                        >
+                          Pagar
+                        </button>
+                      )}
                       <button
+                        type="button"
+                        aria-label="Editar lançamento"
+                        title="Editar"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setPagando({ lancamento, falta });
+                          setEditando(lancamento);
+                          setModalOpen(true);
                         }}
-                        className="px-3 py-1 text-xs bg-[var(--accent-green)] text-[var(--bg)] font-semibold rounded"
+                        className="p-1.5 rounded text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--surface-2)]"
                       >
-                        Pagar
+                        <Pencil size={14} />
                       </button>
-                    )}
+                    </div>
                   </td>
                 </tr>
                 {estaExpandido && (

@@ -13,6 +13,7 @@ import {
   BarChart3,
   Landmark,
   LogOut,
+  Tags,
 } from "lucide-react";
 import { logout } from "@/app/login/actions";
 
@@ -25,6 +26,7 @@ const NAV = [
   { href: "/fornecedores", label: "Fornecedores", icon: Truck },
   { href: "/relatorios", label: "Relatórios", icon: BarChart3 },
   { href: "/contas", label: "Contas", icon: Landmark },
+  { href: "/categorias", label: "Categorias", icon: Tags },
 ];
 
 export function Sidebar({ userEmail }: { userEmail: string | null }) {
