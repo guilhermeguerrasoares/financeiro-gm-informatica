@@ -5,6 +5,7 @@ import { StatusTag } from "@/components/StatusTag";
 import { saldo, status as calcStatus, totalPago } from "@/lib/calculations";
 import { money, formatDataBR, hoje } from "@/lib/format";
 import type { LancamentoRow, PagamentoRow, Categoria } from "@/lib/types";
+import { LancamentoModal } from "./LancamentoModal";
 
 export function LancamentosTable({
   lancamentos,
@@ -19,6 +20,8 @@ export function LancamentosTable({
     "pendentes"
   );
   const [busca, setBusca] = useState("");
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editando, setEditando] = useState<LancamentoRow | null>(null);
   const hojeStr = hoje();
 
   const nomeCategoria = (id: string | null) =>
@@ -50,6 +53,7 @@ export function LancamentosTable({
           <button
             key={f}
             onClick={() => setFiltroStatus(f)}
+            aria-pressed={filtroStatus === f}
             className={`px-3 py-1.5 rounded-full text-sm font-semibold border border-[var(--border)] ${
               filtroStatus === f ? "bg-[var(--accent-blue)] text-[var(--bg)]" : "text-[var(--text-dim)]"
             }`}
@@ -59,10 +63,20 @@ export function LancamentosTable({
         ))}
         <input
           placeholder="Buscar por descrição"
+          aria-label="Buscar por descrição"
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
-          className="ml-auto px-3 py-1.5 rounded bg-[var(--surface-2)] border border-[var(--border)] text-sm"
+          className="px-3 py-1.5 rounded bg-[var(--surface-2)] border border-[var(--border)] text-sm"
         />
+        <button
+          onClick={() => {
+            setEditando(null);
+            setModalOpen(true);
+          }}
+          className="ml-auto px-4 py-1.5 rounded bg-[var(--accent-blue)] text-[var(--bg)] text-sm font-semibold"
+        >
+          + Novo lançamento
+        </button>
       </div>
 
       <table className="w-full text-sm border-collapse">
@@ -78,7 +92,14 @@ export function LancamentosTable({
         </thead>
         <tbody>
           {linhas.map(({ lancamento, status, falta }) => (
-            <tr key={lancamento.id} className="border-b border-[var(--border)]">
+            <tr
+              key={lancamento.id}
+              onClick={() => {
+                setEditando(lancamento);
+                setModalOpen(true);
+              }}
+              className="border-b border-[var(--border)] cursor-pointer hover:bg-[var(--surface-2)]"
+            >
               <td className="py-2">{formatDataBR(lancamento.vencimento)}</td>
               <td className="font-medium">{lancamento.descricao}</td>
               <td className="text-[var(--text-dim)]">{nomeCategoria(lancamento.categoria_id)}</td>
@@ -98,6 +119,13 @@ export function LancamentosTable({
           )}
         </tbody>
       </table>
+
+      <LancamentoModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        lancamento={editando}
+        categorias={categorias}
+      />
     </div>
   );
 }
