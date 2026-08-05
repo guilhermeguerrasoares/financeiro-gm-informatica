@@ -3378,6 +3378,8 @@ git commit -m "feat: add contas financeiras module with balances"
 
 ### Task 18: Dashboard
 
+> **Post-review fix:** the code below used raw `new Date()` + `.toISOString().slice(0,10)` for the "vence em 7 dias" limit and the 4-week chart windows, which drifts from `hoje()`'s America/Sao_Paulo anchor by up to a day depending on time of day - the one file in the codebase still doing UTC-based date math after Task 6 standardized on `hoje()`. Fixed by adding `addDias(iso, dias)` to `lib/format.ts` (pure calendar-date string arithmetic anchored at UTC noon, so it never drifts across a boundary) and using it for both windows instead of `new Date()`. See the actual files in the repo for the shipped version.
+
 **Files:**
 - Create: `lib/queries/dashboard.ts`
 - Create: `app/dashboard/page.tsx`

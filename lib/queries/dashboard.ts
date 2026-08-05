@@ -3,7 +3,7 @@ import { listarPagamentos } from "./pagamentos";
 import { listarClientes } from "./clientes";
 import { listarContasFinanceiras } from "./contasFinanceiras";
 import { saldo, status as calcStatus, totalPago } from "@/lib/calculations";
-import { hoje } from "@/lib/format";
+import { hoje, addDias } from "@/lib/format";
 
 export async function dadosDashboard() {
   const [lancamentos, pagamentos, clientes, contas] = await Promise.all([
@@ -19,9 +19,7 @@ export async function dadosDashboard() {
   const atrasados = despesas.filter((l) => calcStatus(l, pagamentos, hojeStr) === "atrasado");
   const totalAtrasado = atrasados.reduce((acc, l) => acc + saldo(l, pagamentos), 0);
 
-  const em7dias = new Date();
-  em7dias.setDate(em7dias.getDate() + 7);
-  const limite = em7dias.toISOString().slice(0, 10);
+  const limite = addDias(hojeStr, 7);
   const venceSemana = despesas.filter(
     (l) => l.vencimento && l.vencimento >= hojeStr && l.vencimento <= limite && calcStatus(l, pagamentos, hojeStr) !== "quitado"
   );
@@ -45,12 +43,8 @@ export async function dadosDashboard() {
 
   const semanas: { inicio: string; entradas: number; saidas: number }[] = [];
   for (let i = 3; i >= 0; i--) {
-    const fim = new Date();
-    fim.setDate(fim.getDate() - i * 7);
-    const inicio = new Date(fim);
-    inicio.setDate(inicio.getDate() - 6);
-    const inicioStr = inicio.toISOString().slice(0, 10);
-    const fimStr = fim.toISOString().slice(0, 10);
+    const fimStr = addDias(hojeStr, -i * 7);
+    const inicioStr = addDias(fimStr, -6);
 
     const pagamentosNaSemana = pagamentos.filter((p) => p.data_pagamento >= inicioStr && p.data_pagamento <= fimStr);
     const entradas = pagamentosNaSemana
