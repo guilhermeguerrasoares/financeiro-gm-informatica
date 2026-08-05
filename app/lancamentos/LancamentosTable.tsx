@@ -1,12 +1,49 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { StatusTag } from "@/components/StatusTag";
 import { saldo, status as calcStatus, totalPago } from "@/lib/calculations";
 import { money, formatDataBR, hoje } from "@/lib/format";
 import type { LancamentoRow, PagamentoRow, Categoria } from "@/lib/types";
 import { LancamentoModal } from "./LancamentoModal";
 import { PagamentoModal } from "./PagamentoModal";
+import { getComprovanteUrlAction } from "./pagamentoActions";
+
+const FORMAS_PAGAMENTO: Record<string, string> = {
+  pix: "Pix",
+  dinheiro: "Dinheiro",
+  boleto: "Boleto",
+  transferencia: "Transferência",
+  cartao_credito: "Cartão de crédito",
+  cartao_debito: "Cartão de débito",
+  permuta: "Permuta",
+};
+
+function VerComprovanteButton({ path }: { path: string }) {
+  const [carregando, setCarregando] = useState(false);
+
+  return (
+    <button
+      type="button"
+      disabled={carregando}
+      onClick={async (e) => {
+        e.stopPropagation();
+        setCarregando(true);
+        try {
+          const url = await getComprovanteUrlAction(path);
+          window.open(url, "_blank", "noopener,noreferrer");
+        } catch {
+          alert("Não foi possível abrir o comprovante.");
+        } finally {
+          setCarregando(false);
+        }
+      }}
+      className="text-xs text-[var(--accent-blue)] underline disabled:opacity-50"
+    >
+      {carregando ? "Abrindo..." : "Ver comprovante"}
+    </button>
+  );
+}
 
 export function LancamentosTable({
   lancamentos,
@@ -24,6 +61,7 @@ export function LancamentosTable({
   const [modalOpen, setModalOpen] = useState(false);
   const [editando, setEditando] = useState<LancamentoRow | null>(null);
   const [pagando, setPagando] = useState<{ lancamento: LancamentoRow; falta: number } | null>(null);
+  const [expandido, setExpandido] = useState<string | null>(null);
   const hojeStr = hoje();
 
   const nomeCategoria = (id: string | null) =>
@@ -84,7 +122,8 @@ export function LancamentosTable({
       <table className="w-full text-sm border-collapse">
         <thead>
           <tr className="text-left text-[var(--text-dim)] text-xs uppercase border-b border-[var(--border)]">
-            <th className="py-2">Vencimento</th>
+            <th className="py-2 w-6"></th>
+            <th>Vencimento</th>
             <th>Descrição</th>
             <th>Categoria</th>
             <th>Situação</th>
@@ -94,41 +133,89 @@ export function LancamentosTable({
           </tr>
         </thead>
         <tbody>
-          {linhas.map(({ lancamento, status, falta }) => (
-            <tr
-              key={lancamento.id}
-              onClick={() => {
-                setEditando(lancamento);
-                setModalOpen(true);
-              }}
-              className="border-b border-[var(--border)] cursor-pointer hover:bg-[var(--surface-2)]"
-            >
-              <td className="py-2">{formatDataBR(lancamento.vencimento)}</td>
-              <td className="font-medium">{lancamento.descricao}</td>
-              <td className="text-[var(--text-dim)]">{nomeCategoria(lancamento.categoria_id)}</td>
-              <td>
-                <StatusTag status={status} />
-              </td>
-              <td className="text-right">{money(lancamento.valor)}</td>
-              <td className="text-right font-semibold text-[var(--accent-red)]">{money(falta)}</td>
-              <td className="text-right">
-                {falta > 0.004 && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setPagando({ lancamento, falta });
-                    }}
-                    className="px-3 py-1 text-xs bg-[var(--accent-green)] text-[var(--bg)] font-semibold rounded"
-                  >
-                    Pagar
-                  </button>
+          {linhas.map(({ lancamento, status, falta }) => {
+            const pagamentosDoLancamento = pagamentos.filter((p) => p.lancamento_id === lancamento.id);
+            const estaExpandido = expandido === lancamento.id;
+
+            return (
+              <Fragment key={lancamento.id}>
+                <tr
+                  onClick={() => {
+                    setEditando(lancamento);
+                    setModalOpen(true);
+                  }}
+                  className="border-b border-[var(--border)] cursor-pointer hover:bg-[var(--surface-2)]"
+                >
+                  <td className="py-2">
+                    {pagamentosDoLancamento.length > 0 && (
+                      <button
+                        type="button"
+                        aria-label={estaExpandido ? "Recolher pagamentos" : "Ver pagamentos"}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setExpandido(estaExpandido ? null : lancamento.id);
+                        }}
+                        className="w-5 h-5 flex items-center justify-center text-[var(--text-dim)]"
+                      >
+                        {estaExpandido ? "▾" : "▸"}
+                      </button>
+                    )}
+                  </td>
+                  <td className="py-2">{formatDataBR(lancamento.vencimento)}</td>
+                  <td className="font-medium">{lancamento.descricao}</td>
+                  <td className="text-[var(--text-dim)]">{nomeCategoria(lancamento.categoria_id)}</td>
+                  <td>
+                    <StatusTag status={status} />
+                  </td>
+                  <td className="text-right">{money(lancamento.valor)}</td>
+                  <td className="text-right font-semibold text-[var(--accent-red)]">{money(falta)}</td>
+                  <td className="text-right">
+                    {falta > 0.004 && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPagando({ lancamento, falta });
+                        }}
+                        className="px-3 py-1 text-xs bg-[var(--accent-green)] text-[var(--bg)] font-semibold rounded"
+                      >
+                        Pagar
+                      </button>
+                    )}
+                  </td>
+                </tr>
+                {estaExpandido && (
+                  <tr key={`${lancamento.id}-pagamentos`} className="border-b border-[var(--border)] bg-[var(--surface-2)]">
+                    <td></td>
+                    <td colSpan={7} className="py-2 pr-4">
+                      <table className="w-full text-xs">
+                        <tbody>
+                          {pagamentosDoLancamento.map((p) => (
+                            <tr key={p.id}>
+                              <td className="py-1 text-[var(--text-dim)]">{formatDataBR(p.data_pagamento)}</td>
+                              <td className="py-1 text-[var(--text-dim)]">
+                                {p.forma_pagamento ? FORMAS_PAGAMENTO[p.forma_pagamento] ?? p.forma_pagamento : "—"}
+                              </td>
+                              <td className="py-1 text-right">{money(p.valor)}</td>
+                              <td className="py-1 text-right w-32">
+                                {p.comprovante_url ? (
+                                  <VerComprovanteButton path={p.comprovante_url} />
+                                ) : (
+                                  <span className="text-[var(--text-dim)]">Sem comprovante</span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </td>
+                  </tr>
                 )}
-              </td>
-            </tr>
-          ))}
+              </Fragment>
+            );
+          })}
           {linhas.length === 0 && (
             <tr>
-              <td colSpan={7} className="py-8 text-center text-[var(--text-dim)]">
+              <td colSpan={8} className="py-8 text-center text-[var(--text-dim)]">
                 Nenhum lançamento com esses filtros.
               </td>
             </tr>

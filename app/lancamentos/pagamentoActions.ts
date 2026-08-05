@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { createClient } from "@/lib/supabase/server";
 import { registrarPagamento, estornarPagamento } from "@/lib/queries/pagamentos";
 import { criarItemPermuta } from "@/lib/queries/itensPermuta";
 
@@ -40,4 +41,11 @@ export async function registrarPagamentoAction(formData: FormData) {
 export async function estornarPagamentoAction(id: string) {
   await estornarPagamento(id);
   revalidatePath("/lancamentos");
+}
+
+export async function getComprovanteUrlAction(path: string): Promise<string> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.storage.from("comprovantes").createSignedUrl(path, 60);
+  if (error) throw error;
+  return data.signedUrl;
 }
