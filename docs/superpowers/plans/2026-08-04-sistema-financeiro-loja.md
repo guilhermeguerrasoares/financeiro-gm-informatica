@@ -609,7 +609,7 @@ export async function login(formData: FormData) {
   });
 
   if (error) {
-    redirect(`/login?erro=${encodeURIComponent(error.message)}`);
+    redirect(`/login?erro=${encodeURIComponent("E-mail ou senha incorretos.")}`);
   }
 
   redirect("/dashboard");
