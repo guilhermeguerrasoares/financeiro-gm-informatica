@@ -4,6 +4,7 @@ import { listarLancamentos } from "@/lib/queries/lancamentos";
 import { listarPagamentos } from "@/lib/queries/pagamentos";
 import { metricasCliente } from "@/lib/ltv";
 import { money } from "@/lib/format";
+import { ClienteDetailActions } from "./ClienteDetailActions";
 
 export default async function ClienteDetailPage({
   params,
@@ -25,7 +26,9 @@ export default async function ClienteDetailPage({
   return (
     <div className="p-6">
       <h1 className="text-2xl font-semibold mb-1">{cliente.nome}</h1>
-      <p className="text-[var(--text-dim)] mb-6">{cliente.contato ?? "Sem contato"}</p>
+      <p className="text-[var(--text-dim)] mb-4">{cliente.contato ?? "Sem contato"}</p>
+
+      <ClienteDetailActions cliente={cliente} />
 
       <div className="grid grid-cols-3 gap-3 mb-8">
         <div className="bg-[var(--surface)] border border-[var(--border)] rounded-lg p-4">

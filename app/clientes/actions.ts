@@ -16,6 +16,7 @@ export async function salvarClienteAction(formData: FormData) {
 
   if (id) {
     await atualizarCliente(id, input);
+    revalidatePath(`/clientes/${id}`);
   } else {
     await criarCliente(input);
   }
