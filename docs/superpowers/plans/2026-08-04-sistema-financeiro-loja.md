@@ -952,7 +952,9 @@ export type PagamentoRow = {
 Create `lib/format.ts`:
 ```typescript
 export function hoje(): string {
-  return new Date().toISOString().slice(0, 10);
+  // en-CA formats as YYYY-MM-DD; pinned to the store's timezone so "hoje" matches
+  // the local calendar day instead of drifting a few hours around UTC midnight.
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
 }
 
 const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -1041,15 +1043,9 @@ export async function listarPagamentos() {
   return data as PagamentoRow[];
 }
 
-export async function registrarPagamento(input: {
-  lancamento_id: string;
-  valor: number;
-  taxa: number | null;
-  forma_pagamento: string | null;
-  data_pagamento: string;
-  comprovante_url: string | null;
-  observacao: string | null;
-}) {
+export async function registrarPagamento(
+  input: Omit<PagamentoRow, "id" | "valor_liquido">
+) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("pagamentos")

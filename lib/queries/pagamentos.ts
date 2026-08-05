@@ -12,15 +12,9 @@ export async function listarPagamentos() {
   return data as PagamentoRow[];
 }
 
-export async function registrarPagamento(input: {
-  lancamento_id: string;
-  valor: number;
-  taxa: number | null;
-  forma_pagamento: string | null;
-  data_pagamento: string;
-  comprovante_url: string | null;
-  observacao: string | null;
-}) {
+export async function registrarPagamento(
+  input: Omit<PagamentoRow, "id" | "valor_liquido">
+) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("pagamentos")
