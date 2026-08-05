@@ -3,19 +3,53 @@
 @tailwind utilities;
 
 :root {
-  --bg: #0B0F14;
-  --surface: #151B23;
-  --surface-2: #1F2937;
-  --border: #2A3441;
+  --bg: #05070A;
+  --surface: rgba(21, 27, 35, 0.6);
+  --surface-2: rgba(31, 41, 55, 0.6);
+  --border: rgba(148, 163, 184, 0.14);
   --text: #E5E7EB;
-  --text-dim: #9CA3AF;
+  --text-dim: #8B95A5;
+
+  /* Financial semantics - never used for brand/structural accents */
   --accent-green: #34D399;
   --accent-red: #F87171;
   --accent-amber: #FBBF24;
   --accent-blue: #60A5FA;
+
+  /* Brand gradient, sampled from the GM Studio Gamer logo */
+  --brand-cyan: #22D3EE;
+  --brand-magenta: #E879F9;
+  --brand-orange: #FB923C;
+  --brand-gradient: linear-gradient(90deg, var(--brand-cyan), var(--brand-magenta), var(--brand-orange));
 }
 
 body {
-  background: var(--bg);
+  background:
+    radial-gradient(ellipse 900px 600px at 15% -10%, rgba(34, 211, 238, 0.10), transparent),
+    radial-gradient(ellipse 900px 600px at 90% 10%, rgba(232, 121, 249, 0.08), transparent),
+    var(--bg);
   color: var(--text);
+  min-height: 100vh;
+}
+
+.glass {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.brand-text {
+  background: var(--brand-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.brand-border {
+  border-image: var(--brand-gradient) 1;
+}
+
+.glow-ring {
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.04), 0 8px 30px -12px rgba(34, 211, 238, 0.25);
 }

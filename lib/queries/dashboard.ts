@@ -53,6 +53,14 @@ export async function dadosDashboard(periodo: PeriodoDashboard) {
   // sentido variar por período selecionado.
   const clientesInadimplentes = clientes.filter((c) => c.classificacao === "inadimplente").length;
 
+  const pagamentosNoPeriodo = pagamentos.filter((p) => p.data_pagamento >= inicio && p.data_pagamento <= fim);
+  const totalEntradasPeriodo = pagamentosNoPeriodo
+    .filter((p) => lancamentos.find((l) => l.id === p.lancamento_id)?.tipo === "receita")
+    .reduce((acc, p) => acc + p.valor, 0);
+  const totalSaidasPeriodo = pagamentosNoPeriodo
+    .filter((p) => lancamentos.find((l) => l.id === p.lancamento_id)?.tipo === "despesa")
+    .reduce((acc, p) => acc + p.valor, 0);
+
   const diasNoPeriodo = Math.max(1, diffDias(inicio, fim) + 1);
   const numSemanas = Math.min(MAX_SEMANAS, Math.max(1, Math.ceil(diasNoPeriodo / 7)));
 
@@ -80,5 +88,7 @@ export async function dadosDashboard(periodo: PeriodoDashboard) {
     receitaPeriodo,
     clientesInadimplentes,
     semanas,
+    totalEntradasPeriodo,
+    totalSaidasPeriodo,
   };
 }
