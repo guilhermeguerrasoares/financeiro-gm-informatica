@@ -66,6 +66,15 @@ export function ClienteModal({
           </select>
         </div>
 
+        <div className="col-span-2">
+          <label className="block text-xs text-[var(--text-dim)] mb-1">Observação</label>
+          <input
+            name="observacao"
+            defaultValue={cliente?.observacao ?? ""}
+            className="w-full px-3 py-2 rounded bg-[var(--surface-2)] border border-[var(--border)]"
+          />
+        </div>
+
         <div className="col-span-2 flex justify-end gap-2 mt-2">
           <button type="button" onClick={onClose} className="px-4 py-2 text-sm border border-[var(--border)] rounded">
             Cancelar
