@@ -2870,12 +2870,16 @@ export async function listarDividasClientes() {
 
 export async function listarDividasLoja() {
   const supabase = await createClient();
+  // maybeSingle (not single): if this seeded category is ever renamed or
+  // deleted, show an empty list instead of throwing and taking down the
+  // whole /dividas page over what's otherwise just a missing row.
   const { data: categoria, error: categoriaError } = await supabase
     .from("categorias")
     .select("id")
     .eq("nome", "Empréstimos e Financiamentos")
-    .single();
+    .maybeSingle();
   if (categoriaError) throw categoriaError;
+  if (!categoria) return [];
 
   const { data, error } = await supabase
     .from("lancamentos")
