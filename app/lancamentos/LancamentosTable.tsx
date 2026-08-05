@@ -6,6 +6,7 @@ import { saldo, status as calcStatus, totalPago } from "@/lib/calculations";
 import { money, formatDataBR, hoje } from "@/lib/format";
 import type { LancamentoRow, PagamentoRow, Categoria } from "@/lib/types";
 import { LancamentoModal } from "./LancamentoModal";
+import { PagamentoModal } from "./PagamentoModal";
 
 export function LancamentosTable({
   lancamentos,
@@ -22,6 +23,7 @@ export function LancamentosTable({
   const [busca, setBusca] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [editando, setEditando] = useState<LancamentoRow | null>(null);
+  const [pagando, setPagando] = useState<{ lancamento: LancamentoRow; falta: number } | null>(null);
   const hojeStr = hoje();
 
   const nomeCategoria = (id: string | null) =>
@@ -88,6 +90,7 @@ export function LancamentosTable({
             <th>Situação</th>
             <th className="text-right">Valor</th>
             <th className="text-right">Falta</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
@@ -108,11 +111,24 @@ export function LancamentosTable({
               </td>
               <td className="text-right">{money(lancamento.valor)}</td>
               <td className="text-right font-semibold text-[var(--accent-red)]">{money(falta)}</td>
+              <td className="text-right">
+                {falta > 0.004 && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setPagando({ lancamento, falta });
+                    }}
+                    className="px-3 py-1 text-xs bg-[var(--accent-green)] text-[var(--bg)] font-semibold rounded"
+                  >
+                    Pagar
+                  </button>
+                )}
+              </td>
             </tr>
           ))}
           {linhas.length === 0 && (
             <tr>
-              <td colSpan={6} className="py-8 text-center text-[var(--text-dim)]">
+              <td colSpan={7} className="py-8 text-center text-[var(--text-dim)]">
                 Nenhum lançamento com esses filtros.
               </td>
             </tr>
@@ -125,6 +141,13 @@ export function LancamentosTable({
         onClose={() => setModalOpen(false)}
         lancamento={editando}
         categorias={categorias}
+      />
+
+      <PagamentoModal
+        open={!!pagando}
+        onClose={() => setPagando(null)}
+        lancamento={pagando?.lancamento ?? null}
+        falta={pagando?.falta ?? 0}
       />
     </div>
   );
