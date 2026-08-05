@@ -71,7 +71,7 @@ create table lancamentos (
   fornecedor_id uuid references fornecedores(id) on delete set null,
   conta_financeira_id uuid references contas_financeiras(id) on delete set null,
   equipamento_id uuid references equipamentos_cliente(id) on delete set null,
-  valor numeric(12,2) not null default 0,
+  valor numeric(12,2) not null default 0 check (valor >= 0),
   custo numeric(12,2),
   vencimento date,
   competencia text,
@@ -80,6 +80,19 @@ create table lancamentos (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+create function set_updated_at() returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+create trigger trg_lancamentos_updated_at
+  before update on lancamentos
+  for each row execute function set_updated_at();
 
 create table pagamentos (
   id uuid primary key default gen_random_uuid(),
@@ -108,6 +121,8 @@ create index idx_lancamentos_vencimento on lancamentos(vencimento);
 create index idx_lancamentos_cliente on lancamentos(cliente_id);
 create index idx_lancamentos_fornecedor on lancamentos(fornecedor_id);
 create index idx_lancamentos_categoria on lancamentos(categoria_id);
+create index idx_lancamentos_conta_financeira on lancamentos(conta_financeira_id);
 create index idx_pagamentos_lancamento on pagamentos(lancamento_id);
 create index idx_pagamentos_data on pagamentos(data_pagamento);
 create index idx_equipamentos_cliente on equipamentos_cliente(cliente_id);
+create index idx_itens_permuta_pagamento on itens_permuta(pagamento_id);
