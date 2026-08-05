@@ -11,3 +11,13 @@ export async function listarContasFinanceiras() {
   if (error) throw error;
   return data as ContaFinanceira[];
 }
+
+export async function criarContaFinanceira(input: {
+  nome: string;
+  tipo: "caixa" | "banco" | "cartao";
+  saldo_inicial: number;
+}) {
+  const supabase = await createClient();
+  const { error } = await supabase.from("contas_financeiras").insert(input);
+  if (error) throw error;
+}
