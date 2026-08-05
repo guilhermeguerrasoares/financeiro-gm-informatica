@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Modal } from "@/components/Modal";
 import { registrarPagamentoAction } from "./pagamentoActions";
+import { PermutaItemFields } from "./PermutaItemFields";
 import { valorLiquido } from "@/lib/calculations";
 import { money, hoje } from "@/lib/format";
 import type { LancamentoRow } from "@/lib/types";
@@ -20,6 +21,7 @@ export function PagamentoModal({
 }) {
   const [valor, setValor] = useState(falta);
   const [taxa, setTaxa] = useState<number | "">("");
+  const [forma, setForma] = useState("");
 
   if (!lancamento) return null;
 
@@ -64,6 +66,8 @@ export function PagamentoModal({
           <label className="block text-xs text-[var(--text-dim)] mb-1">Forma de pagamento</label>
           <select
             name="forma_pagamento"
+            value={forma}
+            onChange={(e) => setForma(e.target.value)}
             className="w-full px-3 py-2 rounded bg-[var(--surface-2)] border border-[var(--border)]"
           >
             <option value="">Não informada</option>
@@ -90,6 +94,8 @@ export function PagamentoModal({
             Valor líquido: {money(valorLiquido(valor || 0, taxa === "" ? null : taxa))}
           </p>
         </div>
+
+        {forma === "permuta" && <PermutaItemFields />}
 
         <div className="col-span-2 flex justify-end gap-2 mt-2">
           <button type="button" onClick={onClose} className="px-4 py-2 text-sm border border-[var(--border)] rounded">

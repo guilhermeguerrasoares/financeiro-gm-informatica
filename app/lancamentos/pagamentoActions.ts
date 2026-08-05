@@ -2,11 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { registrarPagamento, estornarPagamento } from "@/lib/queries/pagamentos";
+import { criarItemPermuta } from "@/lib/queries/itensPermuta";
 
 export async function registrarPagamentoAction(formData: FormData) {
   const taxaRaw = formData.get("taxa") as string;
 
-  await registrarPagamento({
+  const pagamento = await registrarPagamento({
     lancamento_id: formData.get("lancamento_id") as string,
     valor: Number(formData.get("valor")),
     taxa: taxaRaw ? Number(taxaRaw) : null,
@@ -16,7 +17,19 @@ export async function registrarPagamentoAction(formData: FormData) {
     observacao: null,
   });
 
+  const permutaDescricao = formData.get("permuta_descricao") as string;
+  if (formData.get("forma_pagamento") === "permuta" && permutaDescricao) {
+    const valorEstimadoRaw = formData.get("permuta_valor_estimado") as string;
+    await criarItemPermuta({
+      pagamento_id: pagamento.id,
+      descricao: permutaDescricao,
+      valor_estimado: valorEstimadoRaw ? Number(valorEstimadoRaw) : null,
+      status: "em_estoque",
+    });
+  }
+
   revalidatePath("/lancamentos");
+  revalidatePath("/permutas");
 }
 
 export async function estornarPagamentoAction(id: string) {
