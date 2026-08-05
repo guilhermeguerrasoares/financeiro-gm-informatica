@@ -17,6 +17,11 @@ export async function registrarPagamentoAction(formData: FormData) {
     observacao: null,
   });
 
+  // Not wrapped in a DB transaction: pagamento and itens_permuta are two
+  // separate requests. If this second insert fails after the first
+  // succeeds, the payment is recorded but the barter item isn't - accepted
+  // as a v1 tradeoff (no easy cross-request transaction from a server
+  // action against PostgREST); a Postgres RPC would close this gap later.
   const permutaDescricao = formData.get("permuta_descricao") as string;
   if (formData.get("forma_pagamento") === "permuta" && permutaDescricao) {
     const valorEstimadoRaw = formData.get("permuta_valor_estimado") as string;
