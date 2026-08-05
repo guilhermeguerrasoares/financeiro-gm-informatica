@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Modal } from "@/components/Modal";
 import { registrarPagamentoAction } from "./pagamentoActions";
+import { uploadComprovante } from "./uploadComprovante";
 import { PermutaItemFields } from "./PermutaItemFields";
 import { valorLiquido } from "@/lib/calculations";
 import { money, hoje } from "@/lib/format";
@@ -22,6 +23,8 @@ export function PagamentoModal({
   const [valor, setValor] = useState(falta);
   const [taxa, setTaxa] = useState<number | "">("");
   const [forma, setForma] = useState("");
+  const [arquivo, setArquivo] = useState<File | null>(null);
+  const [enviando, setEnviando] = useState(false);
 
   if (!lancamento) return null;
 
@@ -29,7 +32,13 @@ export function PagamentoModal({
     <Modal open={open} onClose={onClose} title="Registrar pagamento">
       <form
         action={async (formData) => {
+          setEnviando(true);
+          if (arquivo) {
+            const path = await uploadComprovante(arquivo, lancamento.id);
+            formData.set("comprovante_path", path);
+          }
           await registrarPagamentoAction(formData);
+          setEnviando(false);
           onClose();
         }}
         className="grid grid-cols-2 gap-3"
@@ -95,14 +104,28 @@ export function PagamentoModal({
           </p>
         </div>
 
+        <div className="col-span-2">
+          <label className="block text-xs text-[var(--text-dim)] mb-1">Comprovante (foto ou PDF)</label>
+          <input
+            type="file"
+            accept="image/*,application/pdf"
+            onChange={(e) => setArquivo(e.target.files?.[0] ?? null)}
+            className="w-full text-sm"
+          />
+        </div>
+
         {forma === "permuta" && <PermutaItemFields />}
 
         <div className="col-span-2 flex justify-end gap-2 mt-2">
           <button type="button" onClick={onClose} className="px-4 py-2 text-sm border border-[var(--border)] rounded">
             Cancelar
           </button>
-          <button type="submit" className="px-4 py-2 text-sm bg-[var(--accent-blue)] text-[var(--bg)] font-semibold rounded">
-            Registrar
+          <button
+            type="submit"
+            disabled={enviando}
+            className="px-4 py-2 text-sm bg-[var(--accent-blue)] text-[var(--bg)] font-semibold rounded disabled:opacity-50"
+          >
+            {enviando ? "Enviando..." : "Registrar"}
           </button>
         </div>
       </form>

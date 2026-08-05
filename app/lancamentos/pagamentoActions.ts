@@ -13,7 +13,7 @@ export async function registrarPagamentoAction(formData: FormData) {
     taxa: taxaRaw ? Number(taxaRaw) : null,
     forma_pagamento: (formData.get("forma_pagamento") as string) || null,
     data_pagamento: formData.get("data_pagamento") as string,
-    comprovante_url: null,
+    comprovante_url: (formData.get("comprovante_path") as string) || null,
     observacao: null,
   });
 
