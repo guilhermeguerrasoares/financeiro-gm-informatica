@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { registrarPagamento, estornarPagamento } from "@/lib/queries/pagamentos";
 import { criarItemPermuta } from "@/lib/queries/itensPermuta";
+import { revalidarPaginasFinanceiras } from "./revalidate";
 
 export async function registrarPagamentoAction(formData: FormData) {
   const taxaRaw = formData.get("taxa") as string;
@@ -34,13 +35,13 @@ export async function registrarPagamentoAction(formData: FormData) {
     });
   }
 
-  revalidatePath("/lancamentos");
+  revalidarPaginasFinanceiras();
   revalidatePath("/permutas");
 }
 
 export async function estornarPagamentoAction(id: string) {
   await estornarPagamento(id);
-  revalidatePath("/lancamentos");
+  revalidarPaginasFinanceiras();
 }
 
 export async function getComprovanteUrlAction(path: string): Promise<string> {

@@ -22,4 +22,5 @@ export async function salvarClienteAction(formData: FormData) {
   }
 
   revalidatePath("/clientes");
+  revalidatePath("/dashboard");
 }

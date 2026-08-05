@@ -1,11 +1,11 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import {
   criarLancamento,
   atualizarLancamento,
   excluirLancamento,
 } from "@/lib/queries/lancamentos";
+import { revalidarPaginasFinanceiras } from "./revalidate";
 
 export async function salvarLancamentoAction(formData: FormData) {
   const id = formData.get("id") as string | null;
@@ -32,10 +32,10 @@ export async function salvarLancamentoAction(formData: FormData) {
     await criarLancamento(input);
   }
 
-  revalidatePath("/lancamentos");
+  revalidarPaginasFinanceiras();
 }
 
 export async function excluirLancamentoAction(id: string) {
   await excluirLancamento(id);
-  revalidatePath("/lancamentos");
+  revalidarPaginasFinanceiras();
 }

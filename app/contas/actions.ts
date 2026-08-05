@@ -10,4 +10,5 @@ export async function criarContaAction(formData: FormData) {
     saldo_inicial: Number(formData.get("saldo_inicial") || 0),
   });
   revalidatePath("/contas");
+  revalidatePath("/dashboard");
 }
