@@ -1,4 +1,4 @@
-import { round2 } from "./calculations";
+import { round2, saldo, status as calcStatus, totalPago } from "./calculations";
 import type { LancamentoRow, Categoria, PagamentoRow } from "./types";
 
 export type LinhaFrenteNegocio = {
@@ -10,8 +10,7 @@ export type LinhaFrenteNegocio = {
 
 export function agruparPorFrenteNegocio(
   lancamentos: LancamentoRow[],
-  categorias: Categoria[],
-  _pagamentos: PagamentoRow[]
+  categorias: Categoria[]
 ): LinhaFrenteNegocio[] {
   const frenteDaCategoria = new Map(categorias.map((c) => [c.id, c.frente_negocio]));
 
@@ -33,5 +32,44 @@ export function agruparPorFrenteNegocio(
     receita: round2(receita),
     custo: round2(custo),
     margem: round2(receita - custo),
+  }));
+}
+
+export type LinhaCategoria = {
+  categoria: string;
+  total: number;
+  pago: number;
+  vencido: number;
+};
+
+// Despesas only: receita already has its own breakdown in
+// agruparPorFrenteNegocio, so mixing tipos into one "total" per categoria
+// here would let e.g. a despesa filed under a receita category net against
+// it silently - nothing in the schema stops that combination today.
+export function agruparPorCategoria(
+  lancamentos: LancamentoRow[],
+  categorias: Categoria[],
+  pagamentos: PagamentoRow[],
+  hoje: string
+): LinhaCategoria[] {
+  const nomeCategoria = new Map(categorias.map((c) => [c.id, c.nome]));
+
+  const acumulado = new Map<string, { total: number; pago: number; vencido: number }>();
+
+  for (const l of lancamentos) {
+    if (l.tipo !== "despesa") continue;
+    const nome = l.categoria_id ? nomeCategoria.get(l.categoria_id) ?? "Outros" : "Outros";
+    const atual = acumulado.get(nome) ?? { total: 0, pago: 0, vencido: 0 };
+    atual.total += l.valor;
+    atual.pago += totalPago(pagamentos, l.id);
+    if (calcStatus(l, pagamentos, hoje) === "atrasado") atual.vencido += saldo(l, pagamentos);
+    acumulado.set(nome, atual);
+  }
+
+  return Array.from(acumulado.entries()).map(([categoria, dados]) => ({
+    categoria,
+    total: round2(dados.total),
+    pago: round2(dados.pago),
+    vencido: round2(dados.vencido),
   }));
 }

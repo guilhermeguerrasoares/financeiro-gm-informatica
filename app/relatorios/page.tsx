@@ -1,4 +1,4 @@
-import { relatorioPorCategoria, relatorioPorFrenteNegocio } from "@/lib/queries/relatorios";
+import { dadosRelatorios } from "@/lib/queries/relatorios";
 import { money } from "@/lib/format";
 
 const FRENTE_LABEL: Record<string, string> = {
@@ -9,7 +9,7 @@ const FRENTE_LABEL: Record<string, string> = {
 };
 
 export default async function RelatoriosPage() {
-  const [porCategoria, porFrente] = await Promise.all([relatorioPorCategoria(), relatorioPorFrenteNegocio()]);
+  const { porCategoria, porFrente } = await dadosRelatorios();
 
   return (
     <div className="p-6">

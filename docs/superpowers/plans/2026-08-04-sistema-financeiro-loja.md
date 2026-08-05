@@ -2991,6 +2991,8 @@ git commit -m "feat: add dividas view over lancamentos"
 
 ### Task 16: Relatórios — por categoria e frente de negócio
 
+> **Post-review refactor:** the code blocks below are what was originally specified and implemented, then reviewed. Code review found two real issues, fixed after landing (see commit history on `feature/sistema-financeiro-loja`, message starting "fix: relatorios..."): (1) `relatorioPorCategoria`/`relatorioPorFrenteNegocio` each independently re-fetched `lancamentos`/`pagamentos`/`categorias`, doubling Supabase round-trips on `/relatorios` — replaced by a single `dadosRelatorios()` in `lib/queries/relatorios.ts` that fetches once and calls two pure functions. (2) `relatorioPorCategoria` summed `valor` across both receita and despesa lançamentos into one per-category total, which a despesa miscategorized under a receita category would silently net against — `agruparPorCategoria` (in `lib/relatorios-calc.ts`, alongside `agruparPorFrenteNegocio`) now filters to `tipo === "despesa"` only, since receita already has its own breakdown in the frente-de-negócio table. `agruparPorFrenteNegocio`'s signature also dropped its unused `pagamentos` parameter. The actual shipped code lives in the repo, not reproduced here again — treat this note as authoritative over the blocks below where they conflict.
+
 **Files:**
 - Create: `lib/queries/relatorios.ts`
 - Create: `app/relatorios/page.tsx`
