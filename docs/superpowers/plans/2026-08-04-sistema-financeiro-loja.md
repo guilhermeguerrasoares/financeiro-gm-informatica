@@ -8,6 +8,8 @@
 
 **Tech Stack:** Next.js 15 (App Router), TypeScript, Tailwind CSS, Supabase (`@supabase/supabase-js`, `@supabase/ssr`), Supabase CLI for local dev/migrations, Vitest for unit tests.
 
+> **Environment note (added after Task 1):** This machine has no Docker, Homebrew, or Supabase CLI, so the local-dev workflow described in Tasks 2–4 and 11 (`supabase start`, `supabase db reset`) is not available. Instead, development targets a real hosted Supabase **Free-tier** project ("Financeiro GM Informatica", ref `wutwfdouywylumywwxrm`) created directly via the Supabase dashboard. Its URL and API keys go straight into `.env.local` — no local Postgres instance. Wherever a task says to run a migration via `supabase db reset`, apply it instead by pasting the migration SQL into the project's **SQL Editor** in the Supabase dashboard (the controller coordinates this with the user directly, since it requires a manual paste). This is a deliberate stopgap: the store owner found the ~US$10/month compute cost too high to commit to before client approval, so this free project is for build-and-demo purposes. Once approved, the plan is to hand the finished project off to the client's own Supabase/Vercel accounts (their own billing, not the agency's) — Task 19 will need re-scoping at that point rather than following its current "push migrations to a production project we own" framing.
+
 **Reference spec:** `docs/superpowers/specs/2026-08-04-sistema-financeiro-loja-design.md`
 
 ---
@@ -160,31 +162,22 @@ git commit -m "chore: scaffold Next.js app with Tailwind and Vitest"
 
 ---
 
-### Task 2: Supabase local project and client helpers
+### Task 2: Supabase project connection and client helpers
 
 **Files:**
-- Create: `supabase/config.toml` (via CLI)
 - Create: `lib/supabase/client.ts`
 - Create: `lib/supabase/server.ts`
 - Create: `.env.local`, `.env.local.example`
 
-- [ ] **Step 1: Install Supabase CLI and init local project**
+- [ ] **Step 1: Store the hosted project's credentials**
 
-Run:
-```bash
-brew install supabase/tap/supabase
-supabase init
-supabase start
+A Supabase Free-tier project ("Financeiro GM Informatica", ref `wutwfdouywylumywwxrm`) already exists — created directly via the Supabase dashboard (no CLI/Docker available in this environment; see the environment note at the top of this plan). Its URL and keys were provided by the project owner.
+
+Create `.env.local`:
 ```
-Expected: Docker containers start; the command prints `API URL`, `anon key`, `service_role key`. Copy these values.
-
-- [ ] **Step 2: Store local credentials**
-
-Create `.env.local` (values from the previous step's output):
-```
-NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon key from supabase start output>
-SUPABASE_SERVICE_ROLE_KEY=<service role key from supabase start output>
+NEXT_PUBLIC_SUPABASE_URL=https://wutwfdouywylumywwxrm.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<the anon/public key provided>
+SUPABASE_SERVICE_ROLE_KEY=<the service_role key provided>
 ```
 
 Create `.env.local.example`:
@@ -194,7 +187,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 ```
 
-- [ ] **Step 3: Browser Supabase client**
+- [ ] **Step 2: Browser Supabase client**
 
 Create `lib/supabase/client.ts`:
 ```typescript
@@ -208,7 +201,7 @@ export function createClient() {
 }
 ```
 
-- [ ] **Step 4: Server Supabase client**
+- [ ] **Step 3: Server Supabase client**
 
 Create `lib/supabase/server.ts`:
 ```typescript
@@ -241,16 +234,20 @@ export async function createClient() {
 }
 ```
 
-- [ ] **Step 5: Verify Supabase Studio is reachable**
+- [ ] **Step 4: Verify the hosted project is reachable**
 
-Run: `supabase status`
-Expected: shows `Studio URL: http://127.0.0.1:54323`. Open it in a browser and confirm the Supabase dashboard loads with an empty `public` schema.
+Run:
+```bash
+curl -s -o /dev/null -w "HTTP %{http_code}\n" "https://wutwfdouywylumywwxrm.supabase.co/rest/v1/" \
+  -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY"
+```
+Expected: `HTTP 200`. (The same request with the anon key correctly returns 401 with "Only the service_role API key can be used for this endpoint" — that's expected Supabase platform behavior for the root introspection endpoint, not a misconfiguration.)
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
-git add lib/supabase supabase/config.toml .env.local.example .gitignore
-git commit -m "chore: add Supabase local project and client helpers"
+git add lib/supabase .env.local.example .gitignore
+git commit -m "chore: add Supabase project connection and client helpers"
 ```
 (`.env.local` stays untracked — it's already covered by `.gitignore`.)
 
