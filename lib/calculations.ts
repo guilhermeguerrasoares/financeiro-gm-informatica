@@ -1,0 +1,56 @@
+export type Lancamento = {
+  id: string;
+  tipo: "despesa" | "receita";
+  valor: number;
+  custo: number | null;
+  vencimento: string | null; // ISO date, YYYY-MM-DD
+};
+
+export type Pagamento = {
+  id: string;
+  lancamento_id: string;
+  valor: number;
+  taxa: number | null;
+  valor_liquido: number;
+  data_pagamento: string;
+};
+
+export type StatusLancamento = "atrasado" | "aberto" | "parcial" | "quitado";
+
+export function round2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+export function totalPago(pagamentos: Pagamento[], lancamentoId: string): number {
+  return round2(
+    pagamentos
+      .filter((p) => p.lancamento_id === lancamentoId)
+      .reduce((acc, p) => acc + p.valor, 0)
+  );
+}
+
+export function saldo(lancamento: Lancamento, pagamentos: Pagamento[]): number {
+  return round2(lancamento.valor - totalPago(pagamentos, lancamento.id));
+}
+
+export function status(
+  lancamento: Lancamento,
+  pagamentos: Pagamento[],
+  hoje: string
+): StatusLancamento {
+  const pago = totalPago(pagamentos, lancamento.id);
+  const restante = saldo(lancamento, pagamentos);
+  if (lancamento.valor > 0 && restante <= 0.004) return "quitado";
+  if (lancamento.vencimento && lancamento.vencimento < hoje) return "atrasado";
+  if (pago > 0) return "parcial";
+  return "aberto";
+}
+
+export function valorLiquido(valor: number, taxa: number | null): number {
+  return round2(valor - (taxa ?? 0));
+}
+
+export function margem(lancamento: Lancamento): number | null {
+  if (lancamento.custo == null) return null;
+  return round2(lancamento.valor - lancamento.custo);
+}
