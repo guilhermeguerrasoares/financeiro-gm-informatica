@@ -1319,6 +1319,8 @@ Create `components/Modal.tsx`:
 ```tsx
 "use client";
 
+import { useEffect } from "react";
+
 export function Modal({
   open,
   onClose,
@@ -1330,6 +1332,15 @@ export function Modal({
   title: string;
   children: React.ReactNode;
 }) {
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [open, onClose]);
+
   if (!open) return null;
 
   return (
@@ -1516,6 +1527,7 @@ export function LancamentoModal({
             <button
               type="button"
               onClick={async () => {
+                if (!confirm(`Excluir "${lancamento.descricao}"? Essa ação não pode ser desfeita.`)) return;
                 await excluirLancamentoAction(lancamento.id);
                 onClose();
               }}

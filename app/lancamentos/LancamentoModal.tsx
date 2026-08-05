@@ -115,6 +115,7 @@ export function LancamentoModal({
             <button
               type="button"
               onClick={async () => {
+                if (!confirm(`Excluir "${lancamento.descricao}"? Essa ação não pode ser desfeita.`)) return;
                 await excluirLancamentoAction(lancamento.id);
                 onClose();
               }}
