@@ -3,9 +3,13 @@ import { listarPagamentos } from "./pagamentos";
 import { listarClientes } from "./clientes";
 import { listarContasFinanceiras } from "./contasFinanceiras";
 import { saldo, status as calcStatus, totalPago } from "@/lib/calculations";
-import { hoje, addDias } from "@/lib/format";
+import { addDias, diffDias } from "@/lib/format";
 
-export async function dadosDashboard() {
+export type PeriodoDashboard = { inicio: string; fim: string };
+
+const MAX_SEMANAS = 8;
+
+export async function dadosDashboard(periodo: PeriodoDashboard) {
   const [lancamentos, pagamentos, clientes, contas] = await Promise.all([
     listarLancamentos(),
     listarPagamentos(),
@@ -13,40 +17,51 @@ export async function dadosDashboard() {
     listarContasFinanceiras(),
   ]);
 
-  const hojeStr = hoje();
+  const { inicio, fim } = periodo;
   const despesas = lancamentos.filter((l) => l.tipo === "despesa");
 
-  const atrasados = despesas.filter((l) => calcStatus(l, pagamentos, hojeStr) === "atrasado");
+  // "Atrasado" e "vence em 7 dias" são sempre relativos ao fim do período
+  // selecionado - selecionar um mês passado mostra a situação como estava
+  // naquele momento.
+  const atrasados = despesas.filter((l) => calcStatus(l, pagamentos, fim) === "atrasado");
   const totalAtrasado = atrasados.reduce((acc, l) => acc + saldo(l, pagamentos), 0);
 
-  const limite = addDias(hojeStr, 7);
+  const limite = addDias(fim, 7);
   const venceSemana = despesas.filter(
-    (l) => l.vencimento && l.vencimento >= hojeStr && l.vencimento <= limite && calcStatus(l, pagamentos, hojeStr) !== "quitado"
+    (l) => l.vencimento && l.vencimento >= fim && l.vencimento <= limite && calcStatus(l, pagamentos, fim) !== "quitado"
   );
   const totalSemana = venceSemana.reduce((acc, l) => acc + saldo(l, pagamentos), 0);
 
-  const mesAtual = hojeStr.slice(0, 7);
-  const receitaMes = lancamentos
-    .filter((l) => l.tipo === "receita" && l.vencimento?.slice(0, 7) === mesAtual)
+  const receitaPeriodo = lancamentos
+    .filter((l) => l.tipo === "receita" && l.vencimento && l.vencimento >= inicio && l.vencimento <= fim)
     .reduce((acc, l) => acc + totalPago(pagamentos, l.id), 0);
 
+  // Saldo consolidado: quanto cada conta tinha acumulado até o fim do
+  // período (não só o que se moveu dentro dele) - é o "extrato daquele dia".
   const saldoConsolidado = contas.reduce((acc, c) => {
     const daConta = lancamentos.filter((l) => l.conta_financeira_id === c.id);
     const movimentado = daConta.reduce((a, l) => {
-      const pago = totalPago(pagamentos, l.id);
-      return a + (l.tipo === "receita" ? pago : -pago);
+      const pagoAteFim = pagamentos
+        .filter((p) => p.lancamento_id === l.id && p.data_pagamento <= fim)
+        .reduce((soma, p) => soma + p.valor, 0);
+      return a + (l.tipo === "receita" ? pagoAteFim : -pagoAteFim);
     }, 0);
     return acc + c.saldo_inicial + movimentado;
   }, 0);
 
+  // Classificação é um estado atual do cliente, não histórico - não faz
+  // sentido variar por período selecionado.
   const clientesInadimplentes = clientes.filter((c) => c.classificacao === "inadimplente").length;
 
-  const semanas: { inicio: string; entradas: number; saidas: number }[] = [];
-  for (let i = 3; i >= 0; i--) {
-    const fimStr = addDias(hojeStr, -i * 7);
-    const inicioStr = addDias(fimStr, -6);
+  const diasNoPeriodo = Math.max(1, diffDias(inicio, fim) + 1);
+  const numSemanas = Math.min(MAX_SEMANAS, Math.max(1, Math.ceil(diasNoPeriodo / 7)));
 
-    const pagamentosNaSemana = pagamentos.filter((p) => p.data_pagamento >= inicioStr && p.data_pagamento <= fimStr);
+  const semanas: { inicio: string; fim: string; entradas: number; saidas: number }[] = [];
+  for (let i = numSemanas - 1; i >= 0; i--) {
+    const fimSemana = addDias(fim, -i * 7);
+    const inicioSemana = addDias(fimSemana, -6);
+
+    const pagamentosNaSemana = pagamentos.filter((p) => p.data_pagamento >= inicioSemana && p.data_pagamento <= fimSemana);
     const entradas = pagamentosNaSemana
       .filter((p) => lancamentos.find((l) => l.id === p.lancamento_id)?.tipo === "receita")
       .reduce((acc, p) => acc + p.valor, 0);
@@ -54,7 +69,7 @@ export async function dadosDashboard() {
       .filter((p) => lancamentos.find((l) => l.id === p.lancamento_id)?.tipo === "despesa")
       .reduce((acc, p) => acc + p.valor, 0);
 
-    semanas.push({ inicio: inicioStr, entradas, saidas });
+    semanas.push({ inicio: inicioSemana, fim: fimSemana, entradas, saidas });
   }
 
   return {
@@ -62,7 +77,7 @@ export async function dadosDashboard() {
     totalAtrasado,
     contasAtrasadas: atrasados.length,
     totalSemana,
-    receitaMes,
+    receitaPeriodo,
     clientesInadimplentes,
     semanas,
   };

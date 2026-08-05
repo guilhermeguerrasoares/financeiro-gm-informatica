@@ -15,6 +15,22 @@ export function addDias(iso: string, dias: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+// Whole days between two "YYYY-MM-DD" strings (fim - inicio), UTC-noon
+// anchored for the same reason as addDias.
+export function diffDias(inicio: string, fim: string): number {
+  const a = new Date(`${inicio}T12:00:00Z`);
+  const b = new Date(`${fim}T12:00:00Z`);
+  return Math.round((b.getTime() - a.getTime()) / 86_400_000);
+}
+
+// Last calendar day of a "YYYY-MM" month string.
+export function ultimoDiaDoMes(mes: string): string {
+  const [ano, mesNum] = mes.split("-").map(Number);
+  const primeiroDiaProximoMes =
+    mesNum === 12 ? `${ano + 1}-01-01` : `${ano}-${String(mesNum + 1).padStart(2, "0")}-01`;
+  return addDias(primeiroDiaProximoMes, -1);
+}
+
 const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
 export function money(n: number | null | undefined): string {
