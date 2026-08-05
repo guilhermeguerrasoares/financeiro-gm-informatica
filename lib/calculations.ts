@@ -40,6 +40,8 @@ export function status(
 ): StatusLancamento {
   const pago = totalPago(pagamentos, lancamento.id);
   const restante = saldo(lancamento, pagamentos);
+  // valor === 0 means "not yet defined" (see reference UX), not "already settled",
+  // so it deliberately falls through to atrasado/parcial/aberto instead of quitado.
   if (lancamento.valor > 0 && restante <= 0.004) return "quitado";
   if (lancamento.vencimento && lancamento.vencimento < hoje) return "atrasado";
   if (pago > 0) return "parcial";
