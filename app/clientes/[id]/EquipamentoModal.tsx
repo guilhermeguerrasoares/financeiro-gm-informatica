@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { Modal } from "@/components/Modal";
+import { ModalError } from "@/components/ModalError";
 import { criarEquipamentoAction } from "./equipamentoActions";
 
 export function EquipamentoModal({
@@ -12,16 +14,24 @@ export function EquipamentoModal({
   onClose: () => void;
   clienteId: string;
 }) {
+  const [erro, setErro] = useState<string | null>(null);
+
   return (
     <Modal open={open} onClose={onClose} title="Novo equipamento">
       <form
         action={async (formData) => {
-          await criarEquipamentoAction(formData);
-          onClose();
+          setErro(null);
+          try {
+            await criarEquipamentoAction(formData);
+            onClose();
+          } catch {
+            setErro("Não foi possível salvar o equipamento. Tente novamente.");
+          }
         }}
         className="grid grid-cols-2 gap-3"
       >
         <input type="hidden" name="cliente_id" value={clienteId} />
+        <ModalError mensagem={erro} />
 
         <div>
           <label className="block text-xs text-[var(--text-dim)] mb-1">Tipo</label>

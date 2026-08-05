@@ -1,18 +1,28 @@
 "use client";
 
+import { useState } from "react";
 import { Modal } from "@/components/Modal";
+import { ModalError } from "@/components/ModalError";
 import { criarFornecedorAction } from "./actions";
 
 export function FornecedorModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [erro, setErro] = useState<string | null>(null);
+
   return (
     <Modal open={open} onClose={onClose} title="Novo fornecedor">
       <form
         action={async (formData) => {
-          await criarFornecedorAction(formData);
-          onClose();
+          setErro(null);
+          try {
+            await criarFornecedorAction(formData);
+            onClose();
+          } catch {
+            setErro("Não foi possível salvar o fornecedor. Tente novamente.");
+          }
         }}
         className="grid grid-cols-2 gap-3"
       >
+        <ModalError mensagem={erro} />
         <div className="col-span-2">
           <label className="block text-xs text-[var(--text-dim)] mb-1">Nome</label>
           <input name="nome" required className="w-full px-3 py-2 rounded bg-[var(--surface-2)] border border-[var(--border)]" />

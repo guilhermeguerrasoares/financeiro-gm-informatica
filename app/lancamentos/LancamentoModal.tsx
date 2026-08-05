@@ -1,7 +1,8 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { Modal } from "@/components/Modal";
+import { ModalError } from "@/components/ModalError";
 import { salvarLancamentoAction, excluirLancamentoAction } from "./actions";
 import type { Categoria, LancamentoRow } from "@/lib/types";
 
@@ -17,18 +18,25 @@ export function LancamentoModal({
   categorias: Categoria[];
 }) {
   const formRef = useRef<HTMLFormElement>(null);
+  const [erro, setErro] = useState<string | null>(null);
 
   return (
     <Modal open={open} onClose={onClose} title={lancamento ? "Editar lançamento" : "Novo lançamento"}>
       <form
         ref={formRef}
         action={async (formData) => {
-          await salvarLancamentoAction(formData);
-          onClose();
+          setErro(null);
+          try {
+            await salvarLancamentoAction(formData);
+            onClose();
+          } catch {
+            setErro("Não foi possível salvar o lançamento. Tente novamente.");
+          }
         }}
         className="grid grid-cols-2 gap-3"
       >
         {lancamento && <input type="hidden" name="id" value={lancamento.id} />}
+        <ModalError mensagem={erro} />
 
         <div className="col-span-2">
           <label className="block text-xs text-[var(--text-dim)] mb-1">Descrição</label>
@@ -116,8 +124,12 @@ export function LancamentoModal({
               type="button"
               onClick={async () => {
                 if (!confirm(`Excluir "${lancamento.descricao}"? Essa ação não pode ser desfeita.`)) return;
-                await excluirLancamentoAction(lancamento.id);
-                onClose();
+                try {
+                  await excluirLancamentoAction(lancamento.id);
+                  onClose();
+                } catch {
+                  setErro("Não foi possível excluir o lançamento. Tente novamente.");
+                }
               }}
               className="text-[var(--accent-red)] text-sm font-semibold"
             >

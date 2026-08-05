@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Modal } from "@/components/Modal";
+import { ModalError } from "@/components/ModalError";
 import { registrarPagamentoAction } from "./pagamentoActions";
 import { uploadComprovante } from "./uploadComprovante";
 import { PermutaItemFields } from "./PermutaItemFields";
@@ -25,6 +26,7 @@ export function PagamentoModal({
   const [forma, setForma] = useState("");
   const [arquivo, setArquivo] = useState<File | null>(null);
   const [enviando, setEnviando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
 
   if (!lancamento) return null;
 
@@ -33,17 +35,23 @@ export function PagamentoModal({
       <form
         action={async (formData) => {
           setEnviando(true);
-          // Uploads before creating the pagamento row (same non-transactional
-          // tradeoff as the permuta item in pagamentoActions.ts): if
-          // registrarPagamentoAction fails after this succeeds, the file is
-          // orphaned in Storage with nothing pointing at it. Accepted for v1.
-          if (arquivo) {
-            const path = await uploadComprovante(arquivo, lancamento.id);
-            formData.set("comprovante_path", path);
+          setErro(null);
+          try {
+            // Uploads before creating the pagamento row (same non-transactional
+            // tradeoff as the permuta item in pagamentoActions.ts): if
+            // registrarPagamentoAction fails after this succeeds, the file is
+            // orphaned in Storage with nothing pointing at it. Accepted for v1.
+            if (arquivo) {
+              const path = await uploadComprovante(arquivo, lancamento.id);
+              formData.set("comprovante_path", path);
+            }
+            await registrarPagamentoAction(formData);
+            onClose();
+          } catch {
+            setErro("Não foi possível registrar o pagamento. Tente novamente.");
+          } finally {
+            setEnviando(false);
           }
-          await registrarPagamentoAction(formData);
-          setEnviando(false);
-          onClose();
         }}
         className="grid grid-cols-2 gap-3"
       >
@@ -51,6 +59,7 @@ export function PagamentoModal({
         <p className="col-span-2 text-sm text-[var(--text-dim)]">
           {lancamento.descricao} · falta {money(falta)}
         </p>
+        <ModalError mensagem={erro} />
 
         <div>
           <label className="block text-xs text-[var(--text-dim)] mb-1">Valor pago (R$)</label>

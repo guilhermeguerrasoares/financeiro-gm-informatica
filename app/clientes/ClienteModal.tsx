@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { Modal } from "@/components/Modal";
+import { ModalError } from "@/components/ModalError";
 import { salvarClienteAction } from "./actions";
 import type { Cliente } from "@/lib/types";
 
@@ -13,16 +15,24 @@ export function ClienteModal({
   onClose: () => void;
   cliente: Cliente | null;
 }) {
+  const [erro, setErro] = useState<string | null>(null);
+
   return (
     <Modal open={open} onClose={onClose} title={cliente ? "Editar cliente" : "Novo cliente"}>
       <form
         action={async (formData) => {
-          await salvarClienteAction(formData);
-          onClose();
+          setErro(null);
+          try {
+            await salvarClienteAction(formData);
+            onClose();
+          } catch {
+            setErro("Não foi possível salvar o cliente. Tente novamente.");
+          }
         }}
         className="grid grid-cols-2 gap-3"
       >
         {cliente && <input type="hidden" name="id" value={cliente.id} />}
+        <ModalError mensagem={erro} />
 
         <div className="col-span-2">
           <label className="block text-xs text-[var(--text-dim)] mb-1">Nome</label>
