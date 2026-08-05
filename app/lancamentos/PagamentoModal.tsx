@@ -18,7 +18,7 @@ export function PagamentoModal({
   lancamento: LancamentoRow | null;
   falta: number;
 }) {
-  const [valor, setValor] = useState(0);
+  const [valor, setValor] = useState(falta);
   const [taxa, setTaxa] = useState<number | "">("");
 
   if (!lancamento) return null;

@@ -144,6 +144,7 @@ export function LancamentosTable({
       />
 
       <PagamentoModal
+        key={pagando?.lancamento.id ?? "fechado"}
         open={!!pagando}
         onClose={() => setPagando(null)}
         lancamento={pagando?.lancamento ?? null}

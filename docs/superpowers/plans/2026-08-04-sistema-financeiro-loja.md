@@ -1694,7 +1694,7 @@ export function PagamentoModal({
   lancamento: LancamentoRow | null;
   falta: number;
 }) {
-  const [valor, setValor] = useState(0);
+  const [valor, setValor] = useState(falta);
   const [taxa, setTaxa] = useState<number | "">("");
 
   if (!lancamento) return null;
@@ -1813,6 +1813,7 @@ Add a matching cell in the `<tbody>` row, after the `<td className="text-right f
 Add the modal render next to the existing `<LancamentoModal ... />` element:
 ```tsx
       <PagamentoModal
+        key={pagando?.lancamento.id ?? "fechado"}
         open={!!pagando}
         onClose={() => setPagando(null)}
         lancamento={pagando?.lancamento ?? null}
