@@ -8,6 +8,13 @@ export async function listarFornecedores() {
   return data as Fornecedor[];
 }
 
+export async function buscarFornecedor(id: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("fornecedores").select("*").eq("id", id).single();
+  if (error) throw error;
+  return data as Fornecedor;
+}
+
 export async function criarFornecedor(input: Omit<Fornecedor, "id">) {
   const supabase = await createClient();
   const { error } = await supabase.from("fornecedores").insert(input);
