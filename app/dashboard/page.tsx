@@ -4,6 +4,7 @@ import { PeriodoSelector } from "./PeriodoSelector";
 import { KpiCards } from "./KpiCards";
 import { FluxoDiario } from "./FluxoDiario";
 import { FluxoSemanal } from "./FluxoSemanal";
+import { PermutasResumo } from "./PermutasResumo";
 import { MetasProgresso } from "./MetasProgresso";
 import { AtencaoCard } from "./AtencaoCard";
 import { money, hoje, ultimoDiaDoMes } from "@/lib/format";
@@ -64,8 +65,13 @@ export default async function DashboardPage({
         saldoContas={d.saldoConsolidado}
         saldoPorConta={d.saldoPorConta}
         pagamentosPeriodo={d.pagamentosPeriodo}
-        lucroPermutas={d.lucroPermutasPeriodo}
-        itensPermutaVendidos={d.itensPermutaVendidosPeriodo}
+      />
+
+      <PermutasResumo
+        valorVendido={d.valorVendidoPermutasPeriodo}
+        percentualDasEntradas={d.percentualPermutasPeriodo}
+        lucro={d.lucroPermutasPeriodo}
+        itensVendidos={d.itensPermutaVendidosPeriodo}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">

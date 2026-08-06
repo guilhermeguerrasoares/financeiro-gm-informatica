@@ -121,6 +121,13 @@ export async function dadosDashboard(periodo: PeriodoDashboard, periodoFluxo: Pe
     .reduce((acc, p) => acc + p.pagamento.valor, 0);
   const resultadoPeriodo = totalEntradasPeriodo - totalSaidasPeriodo;
 
+  const valorVendidoPermutasPeriodo = itensPermutaVendidosPeriodo.reduce(
+    (acc, i) => acc + (i.item.valor_venda ?? 0),
+    0
+  );
+  const percentualPermutasPeriodo =
+    totalEntradasPeriodo > 0 ? (valorVendidoPermutasPeriodo / totalEntradasPeriodo) * 100 : 0;
+
   // Fluxo diário: cobre o intervalo completo (mês inteiro, mesmo além de
   // hoje) para mostrar previsão, diferente dos KPIs acima que travam em `fim`.
   const lancamentosFluxo = lancamentos.filter(
@@ -172,5 +179,7 @@ export async function dadosDashboard(periodo: PeriodoDashboard, periodoFluxo: Pe
     progressoMetas,
     lucroPermutasPeriodo,
     itensPermutaVendidosPeriodo,
+    valorVendidoPermutasPeriodo,
+    percentualPermutasPeriodo,
   };
 }
