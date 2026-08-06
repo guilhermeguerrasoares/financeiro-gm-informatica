@@ -8,7 +8,8 @@ import { money, formatDataBR, hoje } from "@/lib/format";
 import type { LancamentoRow, PagamentoRow, Categoria } from "@/lib/types";
 import { LancamentoModal } from "./LancamentoModal";
 import { PagamentoModal } from "./PagamentoModal";
-import { getComprovanteUrlAction } from "./pagamentoActions";
+import { getComprovanteUrlAction, anexarComprovanteAction } from "./pagamentoActions";
+import { uploadComprovante } from "./uploadComprovante";
 
 const FORMAS_PAGAMENTO: Record<string, string> = {
   pix: "Pix",
@@ -43,6 +44,41 @@ function VerComprovanteButton({ path }: { path: string }) {
     >
       {carregando ? "Abrindo..." : "Ver comprovante"}
     </button>
+  );
+}
+
+function AnexarComprovanteButton({ pagamentoId, lancamentoId }: { pagamentoId: string; lancamentoId: string }) {
+  const [enviando, setEnviando] = useState(false);
+
+  return (
+    <label className={`text-xs text-[var(--accent-blue)] underline cursor-pointer ${enviando ? "opacity-50" : ""}`}>
+      {enviando ? "Enviando..." : "Anexar comprovante"}
+      <input
+        type="file"
+        accept="image/*,application/pdf"
+        className="hidden"
+        disabled={enviando}
+        onClick={(e) => e.stopPropagation()}
+        onChange={async (e) => {
+          const file = e.target.files?.[0] ?? null;
+          if (!file) return;
+          if (file.size > 10 * 1024 * 1024) {
+            alert("Arquivo maior que 10MB. Escolha um arquivo menor.");
+            e.target.value = "";
+            return;
+          }
+          setEnviando(true);
+          try {
+            const path = await uploadComprovante(file, lancamentoId);
+            await anexarComprovanteAction(pagamentoId, path);
+          } catch {
+            alert("Não foi possível anexar o comprovante.");
+          } finally {
+            setEnviando(false);
+          }
+        }}
+      />
+    </label>
   );
 }
 
@@ -228,7 +264,7 @@ export function LancamentosTable({
                                 {p.comprovante_url ? (
                                   <VerComprovanteButton path={p.comprovante_url} />
                                 ) : (
-                                  <span className="text-[var(--text-dim)]">Sem comprovante</span>
+                                  <AnexarComprovanteButton pagamentoId={p.id} lancamentoId={lancamento.id} />
                                 )}
                               </td>
                             </tr>
@@ -256,6 +292,7 @@ export function LancamentosTable({
         onClose={() => setModalOpen(false)}
         lancamento={editando}
         categorias={categorias}
+        onCriado={(criado) => setPagando({ lancamento: criado, falta: criado.valor })}
       />
 
       <PagamentoModal

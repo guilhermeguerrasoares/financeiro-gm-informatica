@@ -26,13 +26,10 @@ export async function salvarLancamentoAction(formData: FormData) {
     observacao: (formData.get("observacao") as string) || null,
   };
 
-  if (id) {
-    await atualizarLancamento(id, input);
-  } else {
-    await criarLancamento(input);
-  }
+  const lancamento = id ? await atualizarLancamento(id, input) : await criarLancamento(input);
 
   revalidarPaginasFinanceiras();
+  return lancamento;
 }
 
 export async function excluirLancamentoAction(id: string) {

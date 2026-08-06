@@ -31,3 +31,9 @@ export async function estornarPagamento(id: string) {
   const { error } = await supabase.from("pagamentos").delete().eq("id", id);
   if (error) throw error;
 }
+
+export async function atualizarComprovantePagamento(id: string, path: string) {
+  const supabase = await createClient();
+  const { error } = await supabase.from("pagamentos").update({ comprovante_url: path }).eq("id", id);
+  if (error) throw error;
+}

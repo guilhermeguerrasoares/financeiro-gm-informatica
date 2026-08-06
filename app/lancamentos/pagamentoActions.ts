@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { registrarPagamento, estornarPagamento } from "@/lib/queries/pagamentos";
+import { registrarPagamento, estornarPagamento, atualizarComprovantePagamento } from "@/lib/queries/pagamentos";
 import { criarItemPermuta } from "@/lib/queries/itensPermuta";
 import { revalidarPaginasFinanceiras } from "./revalidate";
 
@@ -41,6 +41,11 @@ export async function registrarPagamentoAction(formData: FormData) {
 
 export async function estornarPagamentoAction(id: string) {
   await estornarPagamento(id);
+  revalidarPaginasFinanceiras();
+}
+
+export async function anexarComprovanteAction(pagamentoId: string, path: string) {
+  await atualizarComprovantePagamento(pagamentoId, path);
   revalidarPaginasFinanceiras();
 }
 
