@@ -292,7 +292,6 @@ export function LancamentosTable({
         onClose={() => setModalOpen(false)}
         lancamento={editando}
         categorias={categorias}
-        onCriado={(criado) => setPagando({ lancamento: criado, falta: criado.valor })}
       />
 
       <PagamentoModal

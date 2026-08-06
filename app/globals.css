@@ -6,6 +6,9 @@
   --bg: #05070A;
   --surface: rgba(21, 27, 35, 0.6);
   --surface-2: rgba(31, 41, 55, 0.6);
+  /* Modals need to read clearly over busy page content behind them - less
+     see-through than the .glass cards. */
+  --surface-modal: rgba(15, 19, 26, 0.96);
   --border: rgba(148, 163, 184, 0.14);
   --text: #E5E7EB;
   --text-dim: #8B95A5;
