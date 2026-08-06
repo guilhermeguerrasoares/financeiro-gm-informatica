@@ -2,19 +2,56 @@ import { listarLancamentos } from "./lancamentos";
 import { listarPagamentos } from "./pagamentos";
 import { listarClientes } from "./clientes";
 import { listarContasFinanceiras } from "./contasFinanceiras";
+import { listarMetas } from "./metas";
 import { saldo, status as calcStatus, totalPago } from "@/lib/calculations";
+import { calcularProgressoMetas } from "@/lib/metas-calc";
 import { addDias, diffDias } from "@/lib/format";
+import type { LancamentoRow, PagamentoRow } from "@/lib/types";
 
 export type PeriodoDashboard = { inicio: string; fim: string };
 
-const MAX_SEMANAS = 8;
+export type PagamentoComLancamento = { pagamento: PagamentoRow; lancamento: LancamentoRow };
 
-export async function dadosDashboard(periodo: PeriodoDashboard) {
-  const [lancamentos, pagamentos, clientes, contas] = await Promise.all([
+export type DiaFluxo = {
+  data: string;
+  entradasPrevistas: number;
+  entradasConsolidadas: number;
+  saidasPrevistas: number;
+  saidasConsolidadas: number;
+};
+
+export type SemanaFluxo = { inicio: string; fim: string } & Omit<DiaFluxo, "data">;
+
+function diasEntre(inicio: string, fim: string): string[] {
+  const total = Math.max(0, diffDias(inicio, fim));
+  return Array.from({ length: total + 1 }, (_, i) => addDias(inicio, i));
+}
+
+// Agrupa o fluxo diário em blocos de 7 dias a partir do início do
+// intervalo - reaproveita os números já calculados, sem nova consulta.
+export function agruparPorSemana(dias: DiaFluxo[]): SemanaFluxo[] {
+  const semanas: SemanaFluxo[] = [];
+  for (let i = 0; i < dias.length; i += 7) {
+    const bloco = dias.slice(i, i + 7);
+    semanas.push({
+      inicio: bloco[0].data,
+      fim: bloco[bloco.length - 1].data,
+      entradasPrevistas: bloco.reduce((acc, d) => acc + d.entradasPrevistas, 0),
+      entradasConsolidadas: bloco.reduce((acc, d) => acc + d.entradasConsolidadas, 0),
+      saidasPrevistas: bloco.reduce((acc, d) => acc + d.saidasPrevistas, 0),
+      saidasConsolidadas: bloco.reduce((acc, d) => acc + d.saidasConsolidadas, 0),
+    });
+  }
+  return semanas;
+}
+
+export async function dadosDashboard(periodo: PeriodoDashboard, periodoFluxo: PeriodoDashboard) {
+  const [lancamentos, pagamentos, clientes, contas, metas] = await Promise.all([
     listarLancamentos(),
     listarPagamentos(),
     listarClientes(),
     listarContasFinanceiras(),
+    listarMetas(),
   ]);
 
   const { inicio, fim } = periodo;
@@ -24,7 +61,8 @@ export async function dadosDashboard(periodo: PeriodoDashboard) {
   // selecionado - selecionar um mês passado mostra a situação como estava
   // naquele momento.
   const atrasados = despesas.filter((l) => calcStatus(l, pagamentos, fim) === "atrasado");
-  const totalAtrasado = atrasados.reduce((acc, l) => acc + saldo(l, pagamentos), 0);
+  const atrasadosComSaldo = atrasados.map((lancamento) => ({ lancamento, saldo: saldo(lancamento, pagamentos) }));
+  const totalAtrasado = atrasadosComSaldo.reduce((acc, a) => acc + a.saldo, 0);
 
   const limite = addDias(fim, 7);
   const venceSemana = despesas.filter(
@@ -38,7 +76,7 @@ export async function dadosDashboard(periodo: PeriodoDashboard) {
 
   // Saldo consolidado: quanto cada conta tinha acumulado até o fim do
   // período (não só o que se moveu dentro dele) - é o "extrato daquele dia".
-  const saldoConsolidado = contas.reduce((acc, c) => {
+  const saldoPorConta = contas.map((c) => {
     const daConta = lancamentos.filter((l) => l.conta_financeira_id === c.id);
     const movimentado = daConta.reduce((a, l) => {
       const pagoAteFim = pagamentos
@@ -46,49 +84,80 @@ export async function dadosDashboard(periodo: PeriodoDashboard) {
         .reduce((soma, p) => soma + p.valor, 0);
       return a + (l.tipo === "receita" ? pagoAteFim : -pagoAteFim);
     }, 0);
-    return acc + c.saldo_inicial + movimentado;
-  }, 0);
+    return { conta: c, saldo: c.saldo_inicial + movimentado };
+  });
+  const saldoConsolidado = saldoPorConta.reduce((acc, s) => acc + s.saldo, 0);
 
   // Classificação é um estado atual do cliente, não histórico - não faz
   // sentido variar por período selecionado.
-  const clientesInadimplentes = clientes.filter((c) => c.classificacao === "inadimplente").length;
+  const clientesInadimplentesLista = clientes.filter((c) => c.classificacao === "inadimplente");
+
+  const progressoMetas = calcularProgressoMetas(metas, lancamentos, pagamentos, periodo);
 
   const pagamentosNoPeriodo = pagamentos.filter((p) => p.data_pagamento >= inicio && p.data_pagamento <= fim);
-  const totalEntradasPeriodo = pagamentosNoPeriodo
-    .filter((p) => lancamentos.find((l) => l.id === p.lancamento_id)?.tipo === "receita")
-    .reduce((acc, p) => acc + p.valor, 0);
-  const totalSaidasPeriodo = pagamentosNoPeriodo
-    .filter((p) => lancamentos.find((l) => l.id === p.lancamento_id)?.tipo === "despesa")
-    .reduce((acc, p) => acc + p.valor, 0);
+  const pagamentosPeriodo: PagamentoComLancamento[] = pagamentosNoPeriodo
+    .map((pagamento) => {
+      const lancamento = lancamentos.find((l) => l.id === pagamento.lancamento_id);
+      return lancamento ? { pagamento, lancamento } : null;
+    })
+    .filter((x): x is PagamentoComLancamento => x !== null);
 
-  const diasNoPeriodo = Math.max(1, diffDias(inicio, fim) + 1);
-  const numSemanas = Math.min(MAX_SEMANAS, Math.max(1, Math.ceil(diasNoPeriodo / 7)));
+  const totalEntradasPeriodo = pagamentosPeriodo
+    .filter((p) => p.lancamento.tipo === "receita")
+    .reduce((acc, p) => acc + p.pagamento.valor, 0);
+  const totalSaidasPeriodo = pagamentosPeriodo
+    .filter((p) => p.lancamento.tipo === "despesa")
+    .reduce((acc, p) => acc + p.pagamento.valor, 0);
+  const resultadoPeriodo = totalEntradasPeriodo - totalSaidasPeriodo;
 
-  const semanas: { inicio: string; fim: string; entradas: number; saidas: number }[] = [];
-  for (let i = numSemanas - 1; i >= 0; i--) {
-    const fimSemana = addDias(fim, -i * 7);
-    const inicioSemana = addDias(fimSemana, -6);
+  // Fluxo diário: cobre o intervalo completo (mês inteiro, mesmo além de
+  // hoje) para mostrar previsão, diferente dos KPIs acima que travam em `fim`.
+  const lancamentosFluxo = lancamentos.filter(
+    (l) => l.vencimento && l.vencimento >= periodoFluxo.inicio && l.vencimento <= periodoFluxo.fim
+  );
+  const idsFluxo = new Set(lancamentosFluxo.map((l) => l.id));
+  const pagamentosFluxo = pagamentos.filter((p) => idsFluxo.has(p.lancamento_id));
 
-    const pagamentosNaSemana = pagamentos.filter((p) => p.data_pagamento >= inicioSemana && p.data_pagamento <= fimSemana);
-    const entradas = pagamentosNaSemana
-      .filter((p) => lancamentos.find((l) => l.id === p.lancamento_id)?.tipo === "receita")
-      .reduce((acc, p) => acc + p.valor, 0);
-    const saidas = pagamentosNaSemana
-      .filter((p) => lancamentos.find((l) => l.id === p.lancamento_id)?.tipo === "despesa")
-      .reduce((acc, p) => acc + p.valor, 0);
+  const fluxoDiario: DiaFluxo[] = diasEntre(periodoFluxo.inicio, periodoFluxo.fim).map((data) => {
+    const doDia = lancamentosFluxo.filter((l) => l.vencimento === data);
+    let entradasPrevistas = 0;
+    let entradasConsolidadas = 0;
+    let saidasPrevistas = 0;
+    let saidasConsolidadas = 0;
 
-    semanas.push({ inicio: inicioSemana, fim: fimSemana, entradas, saidas });
-  }
+    for (const l of doDia) {
+      const pago = totalPago(pagamentosFluxo, l.id);
+      const restante = Math.max(0, saldo(l, pagamentosFluxo));
+      if (l.tipo === "receita") {
+        entradasConsolidadas += pago;
+        entradasPrevistas += restante;
+      } else {
+        saidasConsolidadas += pago;
+        saidasPrevistas += restante;
+      }
+    }
+
+    return { data, entradasPrevistas, entradasConsolidadas, saidasPrevistas, saidasConsolidadas };
+  });
 
   return {
     saldoConsolidado,
+    saldoPorConta,
     totalAtrasado,
     contasAtrasadas: atrasados.length,
+    atrasados: atrasadosComSaldo,
     totalSemana,
     receitaPeriodo,
-    clientesInadimplentes,
-    semanas,
+    clientesInadimplentes: clientesInadimplentesLista.length,
+    clientesInadimplentesLista,
     totalEntradasPeriodo,
     totalSaidasPeriodo,
+    resultadoPeriodo,
+    pagamentosPeriodo,
+    fluxoDiario,
+    fluxoSemanal: agruparPorSemana(fluxoDiario),
+    lancamentosFluxo,
+    pagamentosFluxo,
+    progressoMetas,
   };
 }
