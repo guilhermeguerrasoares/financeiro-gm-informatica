@@ -37,6 +37,7 @@ export function PermutasList({
   const totalRecebido = itens.reduce((acc, i) => acc + (i.valor_estimado ?? 0), 0);
   const totalEmEstoque = emEstoque.reduce((acc, i) => acc + (i.valor_estimado ?? 0), 0);
   const totalVendido = vendidos.reduce((acc, i) => acc + (i.valor_venda ?? 0), 0);
+  const lucroTotal = vendidos.reduce((acc, i) => acc + (i.valor_venda ?? 0) - (i.valor_estimado ?? 0), 0);
   const tempoMedioEstoque =
     vendidos.length > 0
       ? Math.round(
@@ -47,7 +48,7 @@ export function PermutasList({
 
   return (
     <div>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
         <div className="glass rounded-xl p-4">
           <p className="text-xs text-[var(--text-dim)] uppercase tracking-wide">Recebido em permutas</p>
           <p className="text-lg font-semibold mt-1">{money(totalRecebido)}</p>
@@ -63,6 +64,12 @@ export function PermutasList({
           <p className="text-xs text-[var(--text-dim)]">{vendidos.length} item(ns)</p>
         </div>
         <div className="glass rounded-xl p-4">
+          <p className="text-xs text-[var(--text-dim)] uppercase tracking-wide">Lucro</p>
+          <p className={`text-lg font-semibold mt-1 ${lucroTotal >= 0 ? "text-[var(--accent-green)]" : "text-[var(--accent-red)]"}`}>
+            {money(lucroTotal)}
+          </p>
+        </div>
+        <div className="glass rounded-xl p-4">
           <p className="text-xs text-[var(--text-dim)] uppercase tracking-wide">Tempo médio em estoque</p>
           <p className="text-lg font-semibold mt-1">{tempoMedioEstoque !== null ? `${tempoMedioEstoque} dias` : "—"}</p>
         </div>
@@ -76,6 +83,7 @@ export function PermutasList({
             <th>Status</th>
             <th className="text-right">Valor estimado</th>
             <th className="text-right">Valor vendido</th>
+            <th className="text-right">Lucro</th>
             <th className="text-right">Dias em estoque</th>
             <th className="text-right">Ações</th>
           </tr>
@@ -83,6 +91,7 @@ export function PermutasList({
         <tbody>
           {itens.map((item) => {
             const dias = diffDias(item.created_at.slice(0, 10), item.data_venda ?? hojeStr);
+            const lucro = item.status === "revendido" ? (item.valor_venda ?? 0) - (item.valor_estimado ?? 0) : null;
             return (
               <tr key={item.id} className="border-b border-[var(--border)]">
                 <td className="py-2">{item.descricao}</td>
@@ -90,6 +99,9 @@ export function PermutasList({
                 <td className={STATUS_COLOR[item.status]}>{STATUS_LABEL[item.status]}</td>
                 <td className="text-right">{money(item.valor_estimado)}</td>
                 <td className="text-right">{item.valor_venda ? money(item.valor_venda) : "—"}</td>
+                <td className={`text-right ${lucro !== null ? (lucro >= 0 ? "text-[var(--accent-green)]" : "text-[var(--accent-red)]") : ""}`}>
+                  {lucro !== null ? money(lucro) : "—"}
+                </td>
                 <td className="text-right">{dias}</td>
                 <td className="text-right">
                   {item.status === "em_estoque" && (
@@ -107,7 +119,7 @@ export function PermutasList({
           })}
           {itens.length === 0 && (
             <tr>
-              <td colSpan={7} className="py-8 text-center text-[var(--text-dim)]">
+              <td colSpan={8} className="py-8 text-center text-[var(--text-dim)]">
                 Nenhum item de permuta registrado ainda.
               </td>
             </tr>
