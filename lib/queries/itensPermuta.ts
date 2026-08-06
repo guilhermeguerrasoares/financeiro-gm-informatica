@@ -7,6 +7,10 @@ export type ItemPermuta = {
   valor_estimado: number | null;
   status: "em_estoque" | "revendido" | "usado_em_conserto" | "descartado";
   observacao: string | null;
+  created_at: string;
+  data_venda: string | null;
+  valor_venda: number | null;
+  lancamento_venda_id: string | null;
 };
 
 export async function listarItensPermuta() {
@@ -27,5 +31,17 @@ export async function criarItemPermuta(input: {
 }) {
   const supabase = await createClient();
   const { error } = await supabase.from("itens_permuta").insert(input);
+  if (error) throw error;
+}
+
+export async function marcarItemPermutaVendido(
+  id: string,
+  input: { data_venda: string; valor_venda: number; lancamento_venda_id: string }
+) {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("itens_permuta")
+    .update({ status: "revendido", ...input })
+    .eq("id", id);
   if (error) throw error;
 }

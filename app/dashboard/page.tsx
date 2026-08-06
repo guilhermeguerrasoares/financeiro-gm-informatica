@@ -97,7 +97,11 @@ export default async function DashboardPage({
         </div>
       </div>
 
-      <FluxoSemanal semanas={d.fluxoSemanal} />
+      <FluxoSemanal
+        semanas={d.fluxoSemanal}
+        lancamentosFluxo={d.lancamentosFluxo}
+        pagamentosFluxo={d.pagamentosFluxo}
+      />
 
       <MetasProgresso progressos={d.progressoMetas} />
 
