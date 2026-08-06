@@ -8,6 +8,8 @@
 
 **Tech Stack:** Next.js 15 (App Router), TypeScript, Tailwind CSS, Supabase (`@supabase/supabase-js`, `@supabase/ssr`), Supabase CLI for local dev/migrations, Vitest for unit tests.
 
+> **Environment note (added after Task 1):** This machine has no Docker, Homebrew, or Supabase CLI, so the local-dev workflow described in Tasks 2–4 and 11 (`supabase start`, `supabase db reset`) is not available. Instead, development targets a real hosted Supabase **Free-tier** project ("Financeiro GM Informatica", ref `wutwfdouywylumywwxrm`) created directly via the Supabase dashboard. Its URL and API keys go straight into `.env.local` — no local Postgres instance. Wherever a task says to run a migration via `supabase db reset`, apply it instead by pasting the migration SQL into the project's **SQL Editor** in the Supabase dashboard (the controller coordinates this with the user directly, since it requires a manual paste). This is a deliberate stopgap: the store owner found the ~US$10/month compute cost too high to commit to before client approval, so this free project is for build-and-demo purposes. Once approved, the plan is to hand the finished project off to the client's own Supabase/Vercel accounts (their own billing, not the agency's) — Task 19 will need re-scoping at that point rather than following its current "push migrations to a production project we own" framing.
+
 **Reference spec:** `docs/superpowers/specs/2026-08-04-sistema-financeiro-loja-design.md`
 
 ---
@@ -160,31 +162,22 @@ git commit -m "chore: scaffold Next.js app with Tailwind and Vitest"
 
 ---
 
-### Task 2: Supabase local project and client helpers
+### Task 2: Supabase project connection and client helpers
 
 **Files:**
-- Create: `supabase/config.toml` (via CLI)
 - Create: `lib/supabase/client.ts`
 - Create: `lib/supabase/server.ts`
 - Create: `.env.local`, `.env.local.example`
 
-- [ ] **Step 1: Install Supabase CLI and init local project**
+- [ ] **Step 1: Store the hosted project's credentials**
 
-Run:
-```bash
-brew install supabase/tap/supabase
-supabase init
-supabase start
+A Supabase Free-tier project ("Financeiro GM Informatica", ref `wutwfdouywylumywwxrm`) already exists — created directly via the Supabase dashboard (no CLI/Docker available in this environment; see the environment note at the top of this plan). Its URL and keys were provided by the project owner.
+
+Create `.env.local`:
 ```
-Expected: Docker containers start; the command prints `API URL`, `anon key`, `service_role key`. Copy these values.
-
-- [ ] **Step 2: Store local credentials**
-
-Create `.env.local` (values from the previous step's output):
-```
-NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon key from supabase start output>
-SUPABASE_SERVICE_ROLE_KEY=<service role key from supabase start output>
+NEXT_PUBLIC_SUPABASE_URL=https://wutwfdouywylumywwxrm.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<the anon/public key provided>
+SUPABASE_SERVICE_ROLE_KEY=<the service_role key provided>
 ```
 
 Create `.env.local.example`:
@@ -194,7 +187,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 ```
 
-- [ ] **Step 3: Browser Supabase client**
+- [ ] **Step 2: Browser Supabase client**
 
 Create `lib/supabase/client.ts`:
 ```typescript
@@ -208,7 +201,7 @@ export function createClient() {
 }
 ```
 
-- [ ] **Step 4: Server Supabase client**
+- [ ] **Step 3: Server Supabase client**
 
 Create `lib/supabase/server.ts`:
 ```typescript
@@ -241,16 +234,20 @@ export async function createClient() {
 }
 ```
 
-- [ ] **Step 5: Verify Supabase Studio is reachable**
+- [ ] **Step 4: Verify the hosted project is reachable**
 
-Run: `supabase status`
-Expected: shows `Studio URL: http://127.0.0.1:54323`. Open it in a browser and confirm the Supabase dashboard loads with an empty `public` schema.
+Run:
+```bash
+curl -s -o /dev/null -w "HTTP %{http_code}\n" "https://wutwfdouywylumywwxrm.supabase.co/rest/v1/" \
+  -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY"
+```
+Expected: `HTTP 200`. (The same request with the anon key correctly returns 401 with "Only the service_role API key can be used for this endpoint" — that's expected Supabase platform behavior for the root introspection endpoint, not a misconfiguration.)
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
-git add lib/supabase supabase/config.toml .env.local.example .gitignore
-git commit -m "chore: add Supabase local project and client helpers"
+git add lib/supabase .env.local.example .gitignore
+git commit -m "chore: add Supabase project connection and client helpers"
 ```
 (`.env.local` stays untracked — it's already covered by `.gitignore`.)
 
@@ -339,7 +336,7 @@ create table lancamentos (
   fornecedor_id uuid references fornecedores(id) on delete set null,
   conta_financeira_id uuid references contas_financeiras(id) on delete set null,
   equipamento_id uuid references equipamentos_cliente(id) on delete set null,
-  valor numeric(12,2) not null default 0,
+  valor numeric(12,2) not null default 0 check (valor >= 0),
   custo numeric(12,2),
   vencimento date,
   competencia text,
@@ -348,6 +345,19 @@ create table lancamentos (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+create function set_updated_at() returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+create trigger trg_lancamentos_updated_at
+  before update on lancamentos
+  for each row execute function set_updated_at();
 
 create table pagamentos (
   id uuid primary key default gen_random_uuid(),
@@ -376,9 +386,11 @@ create index idx_lancamentos_vencimento on lancamentos(vencimento);
 create index idx_lancamentos_cliente on lancamentos(cliente_id);
 create index idx_lancamentos_fornecedor on lancamentos(fornecedor_id);
 create index idx_lancamentos_categoria on lancamentos(categoria_id);
+create index idx_lancamentos_conta_financeira on lancamentos(conta_financeira_id);
 create index idx_pagamentos_lancamento on pagamentos(lancamento_id);
 create index idx_pagamentos_data on pagamentos(data_pagamento);
 create index idx_equipamentos_cliente on equipamentos_cliente(cliente_id);
+create index idx_itens_permuta_pagamento on itens_permuta(pagamento_id);
 ```
 
 - [ ] **Step 2: Apply the schema migration**
@@ -597,7 +609,7 @@ export async function login(formData: FormData) {
   });
 
   if (error) {
-    redirect(`/login?erro=${encodeURIComponent(error.message)}`);
+    redirect(`/login?erro=${encodeURIComponent("E-mail ou senha incorretos.")}`);
   }
 
   redirect("/dashboard");
@@ -940,7 +952,9 @@ export type PagamentoRow = {
 Create `lib/format.ts`:
 ```typescript
 export function hoje(): string {
-  return new Date().toISOString().slice(0, 10);
+  // en-CA formats as YYYY-MM-DD; pinned to the store's timezone so "hoje" matches
+  // the local calendar day instead of drifting a few hours around UTC midnight.
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
 }
 
 const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -1029,15 +1043,9 @@ export async function listarPagamentos() {
   return data as PagamentoRow[];
 }
 
-export async function registrarPagamento(input: {
-  lancamento_id: string;
-  valor: number;
-  taxa: number | null;
-  forma_pagamento: string | null;
-  data_pagamento: string;
-  comprovante_url: string | null;
-  observacao: string | null;
-}) {
+export async function registrarPagamento(
+  input: Omit<PagamentoRow, "id" | "valor_liquido">
+) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("pagamentos")
@@ -1311,6 +1319,8 @@ Create `components/Modal.tsx`:
 ```tsx
 "use client";
 
+import { useEffect } from "react";
+
 export function Modal({
   open,
   onClose,
@@ -1322,6 +1332,15 @@ export function Modal({
   title: string;
   children: React.ReactNode;
 }) {
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [open, onClose]);
+
   if (!open) return null;
 
   return (
@@ -1508,6 +1527,7 @@ export function LancamentoModal({
             <button
               type="button"
               onClick={async () => {
+                if (!confirm(`Excluir "${lancamento.descricao}"? Essa ação não pode ser desfeita.`)) return;
                 await excluirLancamentoAction(lancamento.id);
                 onClose();
               }}
@@ -1674,7 +1694,7 @@ export function PagamentoModal({
   lancamento: LancamentoRow | null;
   falta: number;
 }) {
-  const [valor, setValor] = useState(0);
+  const [valor, setValor] = useState(falta);
   const [taxa, setTaxa] = useState<number | "">("");
 
   if (!lancamento) return null;
@@ -1793,6 +1813,7 @@ Add a matching cell in the `<tbody>` row, after the `<td className="text-right f
 Add the modal render next to the existing `<LancamentoModal ... />` element:
 ```tsx
       <PagamentoModal
+        key={pagando?.lancamento.id ?? "fechado"}
         open={!!pagando}
         onClose={() => setPagando(null)}
         lancamento={pagando?.lancamento ?? null}
@@ -2213,6 +2234,11 @@ export type MetricasCliente = {
   frequencia: number;
 };
 
+// A lancamento counts toward frequencia/ltv as soon as it has any payment
+// (totalPago > 0), even if only partially paid - so a still-open partial
+// payment lowers ticketMedio the same as a fully settled sale of that size.
+// This favors "activity so far" over "only completed sales"; revisit if the
+// store wants LTV to reflect settled revenue exclusively.
 export function metricasCliente(
   clienteId: string,
   lancamentos: LancamentoRow[],
@@ -2844,12 +2870,16 @@ export async function listarDividasClientes() {
 
 export async function listarDividasLoja() {
   const supabase = await createClient();
+  // maybeSingle (not single): if this seeded category is ever renamed or
+  // deleted, show an empty list instead of throwing and taking down the
+  // whole /dividas page over what's otherwise just a missing row.
   const { data: categoria, error: categoriaError } = await supabase
     .from("categorias")
     .select("id")
     .eq("nome", "Empréstimos e Financiamentos")
-    .single();
+    .maybeSingle();
   if (categoriaError) throw categoriaError;
+  if (!categoria) return [];
 
   const { data, error } = await supabase
     .from("lancamentos")
@@ -2960,6 +2990,8 @@ git commit -m "feat: add dividas view over lancamentos"
 ---
 
 ### Task 16: Relatórios — por categoria e frente de negócio
+
+> **Post-review refactor:** the code blocks below are what was originally specified and implemented, then reviewed. Code review found two real issues, fixed after landing (see commit history on `feature/sistema-financeiro-loja`, message starting "fix: relatorios..."): (1) `relatorioPorCategoria`/`relatorioPorFrenteNegocio` each independently re-fetched `lancamentos`/`pagamentos`/`categorias`, doubling Supabase round-trips on `/relatorios` — replaced by a single `dadosRelatorios()` in `lib/queries/relatorios.ts` that fetches once and calls two pure functions. (2) `relatorioPorCategoria` summed `valor` across both receita and despesa lançamentos into one per-category total, which a despesa miscategorized under a receita category would silently net against — `agruparPorCategoria` (in `lib/relatorios-calc.ts`, alongside `agruparPorFrenteNegocio`) now filters to `tipo === "despesa"` only, since receita already has its own breakdown in the frente-de-negócio table. `agruparPorFrenteNegocio`'s signature also dropped its unused `pagamentos` parameter. The actual shipped code lives in the repo, not reproduced here again — treat this note as authoritative over the blocks below where they conflict.
 
 **Files:**
 - Create: `lib/queries/relatorios.ts`
@@ -3345,6 +3377,8 @@ git commit -m "feat: add contas financeiras module with balances"
 ---
 
 ### Task 18: Dashboard
+
+> **Post-review fix:** the code below used raw `new Date()` + `.toISOString().slice(0,10)` for the "vence em 7 dias" limit and the 4-week chart windows, which drifts from `hoje()`'s America/Sao_Paulo anchor by up to a day depending on time of day - the one file in the codebase still doing UTC-based date math after Task 6 standardized on `hoje()`. Fixed by adding `addDias(iso, dias)` to `lib/format.ts` (pure calendar-date string arithmetic anchored at UTC noon, so it never drifts across a boundary) and using it for both windows instead of `new Date()`. See the actual files in the repo for the shipped version.
 
 **Files:**
 - Create: `lib/queries/dashboard.ts`
