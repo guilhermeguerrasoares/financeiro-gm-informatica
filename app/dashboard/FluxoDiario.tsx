@@ -5,19 +5,12 @@ import { Modal } from "@/components/Modal";
 import { StatusTag } from "@/components/StatusTag";
 import { status as calcStatus, totalPago } from "@/lib/calculations";
 import { money, formatDataBR, hoje } from "@/lib/format";
+import { segmentosBarra } from "@/lib/chartSegments";
 import type { DiaFluxo } from "@/lib/queries/dashboard";
 import type { LancamentoRow, PagamentoRow } from "@/lib/types";
 
 const ENTRADA_CLARA = "rgba(52, 211, 153, 0.25)";
 const SAIDA_CLARA = "rgba(248, 113, 113, 0.25)";
-
-function segmentos(previsto: number, consolidado: number, maxValor: number) {
-  const total = previsto + consolidado;
-  const totalPct = total > 0 ? Math.max(2, (total / maxValor) * 100) : 0;
-  const consolidadoPct = total > 0 ? (consolidado / total) * totalPct : 0;
-  const previstoPct = totalPct - consolidadoPct;
-  return { consolidadoPct, previstoPct };
-}
 
 export function FluxoDiario({
   fluxoDiario,
@@ -59,8 +52,8 @@ export function FluxoDiario({
       <div className="overflow-x-auto">
         <div className="flex gap-1.5 items-end h-40" style={{ minWidth: `${fluxoDiario.length * 22}px` }}>
           {fluxoDiario.map((d) => {
-            const entrada = segmentos(d.entradasPrevistas, d.entradasConsolidadas, maxValor);
-            const saida = segmentos(d.saidasPrevistas, d.saidasConsolidadas, maxValor);
+            const entrada = segmentosBarra(d.entradasPrevistas, d.entradasConsolidadas, maxValor);
+            const saida = segmentosBarra(d.saidasPrevistas, d.saidasConsolidadas, maxValor);
             const totalEntrada = d.entradasPrevistas + d.entradasConsolidadas;
             const totalSaida = d.saidasPrevistas + d.saidasConsolidadas;
 

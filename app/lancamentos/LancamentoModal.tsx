@@ -7,6 +7,7 @@ import { PermutaItemFields } from "./PermutaItemFields";
 import { salvarLancamentoAction, excluirLancamentoAction } from "./actions";
 import { valorLiquido } from "@/lib/calculations";
 import { money, hoje } from "@/lib/format";
+import { FORMAS_PAGAMENTO } from "@/lib/formasPagamento";
 import type { Categoria, LancamentoRow } from "@/lib/types";
 
 export function LancamentoModal({
@@ -187,13 +188,11 @@ export function LancamentoModal({
                 className="w-full px-3 py-2 rounded bg-[var(--surface)] border border-[var(--border)]"
               >
                 <option value="">Não informada</option>
-                <option value="pix">Pix</option>
-                <option value="dinheiro">Dinheiro</option>
-                <option value="boleto">Boleto</option>
-                <option value="transferencia">Transferência</option>
-                <option value="cartao_credito">Cartão de crédito</option>
-                <option value="cartao_debito">Cartão de débito</option>
-                <option value="permuta">Permuta</option>
+                {FORMAS_PAGAMENTO.map((f) => (
+                  <option key={f.value} value={f.value}>
+                    {f.label}
+                  </option>
+                ))}
               </select>
             </div>
 

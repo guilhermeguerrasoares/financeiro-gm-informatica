@@ -5,6 +5,7 @@ import { Modal } from "@/components/Modal";
 import { ModalError } from "@/components/ModalError";
 import { venderItemPermutaAction } from "./actions";
 import { hoje } from "@/lib/format";
+import { FORMAS_PAGAMENTO } from "@/lib/formasPagamento";
 import type { ItemPermuta } from "@/lib/queries/itensPermuta";
 import type { Categoria, ContaFinanceira } from "@/lib/types";
 
@@ -33,7 +34,8 @@ export function VenderModal({
             try {
               await venderItemPermutaAction(formData);
               onClose();
-            } catch {
+            } catch (err) {
+              console.error(err);
               setErro("Não foi possível registrar a venda. Tente novamente.");
             } finally {
               setEnviando(false);
@@ -43,6 +45,7 @@ export function VenderModal({
         >
           <input type="hidden" name="item_id" value={item.id} />
           <input type="hidden" name="descricao_item" value={item.descricao} />
+          <input type="hidden" name="valor_estimado_item" value={item.valor_estimado ?? ""} />
           <ModalError mensagem={erro} />
 
           <div>
@@ -76,12 +79,11 @@ export function VenderModal({
               className="w-full px-3 py-2 rounded bg-[var(--surface-2)] border border-[var(--border)]"
             >
               <option value="">Não informada</option>
-              <option value="pix">Pix</option>
-              <option value="dinheiro">Dinheiro</option>
-              <option value="boleto">Boleto</option>
-              <option value="transferencia">Transferência</option>
-              <option value="cartao_credito">Cartão de crédito</option>
-              <option value="cartao_debito">Cartão de débito</option>
+              {FORMAS_PAGAMENTO.filter((f) => f.value !== "permuta").map((f) => (
+                <option key={f.value} value={f.value}>
+                  {f.label}
+                </option>
+              ))}
             </select>
           </div>
 

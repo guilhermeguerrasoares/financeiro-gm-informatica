@@ -56,3 +56,10 @@ export function margem(lancamento: Lancamento): number | null {
   if (lancamento.custo == null) return null;
   return round2(lancamento.valor - lancamento.custo);
 }
+
+// Ganho na revenda de um item de permuta: preço de venda menos o que ele
+// valia quando entrou (valor_estimado) - mesma lógica de margem() acima,
+// mas para itens de permuta em vez de lançamentos.
+export function lucroPermuta(item: { valor_venda: number | null; valor_estimado: number | null }): number {
+  return round2((item.valor_venda ?? 0) - (item.valor_estimado ?? 0));
+}

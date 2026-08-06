@@ -34,14 +34,39 @@ export async function criarItemPermuta(input: {
   if (error) throw error;
 }
 
-export async function marcarItemPermutaVendido(
-  id: string,
-  input: { data_venda: string; valor_venda: number; lancamento_venda_id: string }
-) {
+// Chama a função vender_item_permuta (supabase/migrations/0008), que cria o
+// lançamento + pagamento e dá baixa no item numa única transação no banco -
+// evita deixar lançamento órfão ou vender o mesmo item duas vezes.
+export async function venderItemPermuta(input: {
+  item_id: string;
+  descricao: string;
+  valor: number;
+  custo: number | null;
+  data: string;
+  forma_pagamento: string | null;
+  conta_financeira_id: string | null;
+  categoria_id: string | null;
+}) {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("vender_item_permuta", {
+    p_item_id: input.item_id,
+    p_descricao: input.descricao,
+    p_valor: input.valor,
+    p_custo: input.custo,
+    p_data: input.data,
+    p_forma: input.forma_pagamento,
+    p_conta_financeira_id: input.conta_financeira_id,
+    p_categoria_id: input.categoria_id,
+  });
+  if (error) throw error;
+  return data as string;
+}
+
+export async function reverterItemPermutaPorLancamento(lancamentoId: string) {
   const supabase = await createClient();
   const { error } = await supabase
     .from("itens_permuta")
-    .update({ status: "revendido", ...input })
-    .eq("id", id);
+    .update({ status: "em_estoque", data_venda: null, valor_venda: null, lancamento_venda_id: null })
+    .eq("lancamento_venda_id", lancamentoId);
   if (error) throw error;
 }

@@ -5,19 +5,12 @@ import { Modal } from "@/components/Modal";
 import { StatusTag } from "@/components/StatusTag";
 import { status as calcStatus, totalPago } from "@/lib/calculations";
 import { money, formatDataBR, hoje } from "@/lib/format";
+import { segmentosBarra } from "@/lib/chartSegments";
 import type { SemanaFluxo } from "@/lib/queries/dashboard";
 import type { LancamentoRow, PagamentoRow } from "@/lib/types";
 
 const ENTRADA_CLARA = "rgba(52, 211, 153, 0.25)";
 const SAIDA_CLARA = "rgba(248, 113, 113, 0.25)";
-
-function segmentos(previsto: number, consolidado: number, maxValor: number) {
-  const total = previsto + consolidado;
-  const totalPct = total > 0 ? Math.max(4, (total / maxValor) * 100) : 0;
-  const consolidadoPct = total > 0 ? (consolidado / total) * totalPct : 0;
-  const previstoPct = totalPct - consolidadoPct;
-  return { consolidadoPct, previstoPct };
-}
 
 export function FluxoSemanal({
   semanas,
@@ -53,8 +46,8 @@ export function FluxoSemanal({
       </h2>
       <div className="flex gap-3 overflow-x-auto pb-1">
         {semanas.map((s) => {
-          const entrada = segmentos(s.entradasPrevistas, s.entradasConsolidadas, maxValor);
-          const saida = segmentos(s.saidasPrevistas, s.saidasConsolidadas, maxValor);
+          const entrada = segmentosBarra(s.entradasPrevistas, s.entradasConsolidadas, maxValor, 4);
+          const saida = segmentosBarra(s.saidasPrevistas, s.saidasConsolidadas, maxValor, 4);
           const totalEntrada = s.entradasPrevistas + s.entradasConsolidadas;
           const totalSaida = s.saidasPrevistas + s.saidasConsolidadas;
 

@@ -4,7 +4,7 @@ import { listarClientes } from "./clientes";
 import { listarContasFinanceiras } from "./contasFinanceiras";
 import { listarMetas } from "./metas";
 import { listarItensPermuta, type ItemPermuta } from "./itensPermuta";
-import { saldo, status as calcStatus, totalPago } from "@/lib/calculations";
+import { saldo, status as calcStatus, totalPago, lucroPermuta } from "@/lib/calculations";
 import { calcularProgressoMetas } from "@/lib/metas-calc";
 import { addDias, diffDias } from "@/lib/format";
 import type { LancamentoRow, PagamentoRow } from "@/lib/types";
@@ -99,11 +99,25 @@ export async function dadosDashboard(periodo: PeriodoDashboard, periodoFluxo: Pe
   const progressoMetas = calcularProgressoMetas(metas, lancamentos, pagamentos, periodo);
 
   // Lucro de permuta é reconhecido na data da venda (não na data de
-  // recebimento do item) - é quando o ganho vira valor real.
+  // recebimento do item) - é quando o ganho vira valor real. `valor_venda`
+  // não-nulo é exigido porque a venda (vender_item_permuta) sempre grava os
+  // dois juntos - um item "revendido" sem valor_venda é dado incompleto.
   const itensPermutaVendidosPeriodo: ItemPermutaComLucro[] = itensPermuta
-    .filter((item) => item.status === "revendido" && item.data_venda && item.data_venda >= inicio && item.data_venda <= fim)
-    .map((item) => ({ item, lucro: (item.valor_venda ?? 0) - (item.valor_estimado ?? 0) }));
-  const lucroPermutasPeriodo = itensPermutaVendidosPeriodo.reduce((acc, i) => acc + i.lucro, 0);
+    .filter(
+      (item) =>
+        item.status === "revendido" &&
+        item.data_venda &&
+        item.valor_venda != null &&
+        item.data_venda >= inicio &&
+        item.data_venda <= fim
+    )
+    .map((item) => ({ item, lucro: lucroPermuta(item) }));
+  let lucroPermutasPeriodo = 0;
+  let valorVendidoPermutasPeriodo = 0;
+  for (const { item, lucro } of itensPermutaVendidosPeriodo) {
+    lucroPermutasPeriodo += lucro;
+    valorVendidoPermutasPeriodo += item.valor_venda ?? 0;
+  }
 
   const pagamentosNoPeriodo = pagamentos.filter((p) => p.data_pagamento >= inicio && p.data_pagamento <= fim);
   const pagamentosPeriodo: PagamentoComLancamento[] = pagamentosNoPeriodo
@@ -121,10 +135,6 @@ export async function dadosDashboard(periodo: PeriodoDashboard, periodoFluxo: Pe
     .reduce((acc, p) => acc + p.pagamento.valor, 0);
   const resultadoPeriodo = totalEntradasPeriodo - totalSaidasPeriodo;
 
-  const valorVendidoPermutasPeriodo = itensPermutaVendidosPeriodo.reduce(
-    (acc, i) => acc + (i.item.valor_venda ?? 0),
-    0
-  );
   const percentualPermutasPeriodo =
     totalEntradasPeriodo > 0 ? (valorVendidoPermutasPeriodo / totalEntradasPeriodo) * 100 : 0;
 

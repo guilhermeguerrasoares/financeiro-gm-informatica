@@ -10,16 +10,7 @@ import { LancamentoModal } from "./LancamentoModal";
 import { PagamentoModal } from "./PagamentoModal";
 import { getComprovanteUrlAction, anexarComprovanteAction } from "./pagamentoActions";
 import { uploadComprovante } from "./uploadComprovante";
-
-const FORMAS_PAGAMENTO: Record<string, string> = {
-  pix: "Pix",
-  dinheiro: "Dinheiro",
-  boleto: "Boleto",
-  transferencia: "Transferência",
-  cartao_credito: "Cartão de crédito",
-  cartao_debito: "Cartão de débito",
-  permuta: "Permuta",
-};
+import { FORMAS_PAGAMENTO_LABEL } from "@/lib/formasPagamento";
 
 function VerComprovanteButton({ path }: { path: string }) {
   const [carregando, setCarregando] = useState(false);
@@ -257,7 +248,7 @@ export function LancamentosTable({
                             <tr key={p.id}>
                               <td className="py-1 text-[var(--text-dim)]">{formatDataBR(p.data_pagamento)}</td>
                               <td className="py-1 text-[var(--text-dim)]">
-                                {p.forma_pagamento ? FORMAS_PAGAMENTO[p.forma_pagamento] ?? p.forma_pagamento : "—"}
+                                {p.forma_pagamento ? FORMAS_PAGAMENTO_LABEL[p.forma_pagamento] ?? p.forma_pagamento : "—"}
                               </td>
                               <td className="py-1 text-right">{money(p.valor)}</td>
                               <td className="py-1 text-right w-32">

@@ -4,6 +4,14 @@ export function hoje(): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
 }
 
+// Converts a timestamptz (e.g. a `created_at` column) to the same
+// America/Sao_Paulo "YYYY-MM-DD" convention as hoje() - a naive
+// `.slice(0, 10)` on the raw UTC timestamp can land on the wrong calendar
+// day for anything created in the evening in Brazil.
+export function dataLocal(timestamp: string): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date(timestamp));
+}
+
 // Pure calendar-date arithmetic on a "YYYY-MM-DD" string, anchored at UTC
 // noon so it never shifts across a day boundary. Use this (not `new Date()`)
 // for any +/- N days math derived from `hoje()`, so date windows stay

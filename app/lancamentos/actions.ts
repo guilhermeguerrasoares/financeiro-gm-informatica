@@ -8,7 +8,7 @@ import {
   excluirLancamento,
 } from "@/lib/queries/lancamentos";
 import { registrarPagamento } from "@/lib/queries/pagamentos";
-import { criarItemPermuta } from "@/lib/queries/itensPermuta";
+import { criarItemPermuta, reverterItemPermutaPorLancamento } from "@/lib/queries/itensPermuta";
 import { revalidarPaginasFinanceiras } from "./revalidate";
 
 async function uploadComprovanteServidor(arquivo: File, lancamentoId: string): Promise<string | null> {
@@ -79,6 +79,11 @@ export async function salvarLancamentoAction(formData: FormData) {
 }
 
 export async function excluirLancamentoAction(id: string) {
+  // Se este lançamento veio de uma venda de permuta, devolve o item pro
+  // estoque antes de apagar - senão ele fica preso em "vendido" pra sempre,
+  // sem lançamento nenhum por trás.
+  await reverterItemPermutaPorLancamento(id);
   await excluirLancamento(id);
+  revalidatePath("/permutas");
   revalidarPaginasFinanceiras();
 }
