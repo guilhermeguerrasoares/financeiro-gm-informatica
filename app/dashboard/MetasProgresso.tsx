@@ -8,10 +8,13 @@ const COR_STATUS: Record<ProgressoMeta["status"], string> = {
   atingida: "var(--accent-green)",
 };
 
-const MENSAGEM_STATUS: Partial<Record<ProgressoMeta["status"], string>> = {
-  estourado: "Limite ultrapassado",
-  atingida: "Meta atingida",
-};
+function mensagemStatus(status: ProgressoMeta["status"], progresso: number): string | null {
+  const pct = Math.round(progresso);
+  if (status === "estourado") return `Limite ultrapassado — ${pct}% do limite`;
+  if (status === "atingida") return `Meta atingida — ${pct}%${pct > 100 ? " (acima do previsto)" : ""}`;
+  if (status === "atencao") return `Perto do limite — ${pct}%`;
+  return null;
+}
 
 export function MetasProgresso({ progressos }: { progressos: ProgressoMeta[] }) {
   if (progressos.length === 0) return null;
@@ -23,11 +26,16 @@ export function MetasProgresso({ progressos }: { progressos: ProgressoMeta[] }) 
         {progressos.map(({ meta, atualValor, atualPercentual, progresso, status }) => {
           const cor = COR_STATUS[status];
           const largura = Math.min(100, Math.max(0, progresso));
+          const estourado = status === "estourado";
           const atualFormatado = meta.unidade === "percentual" ? `${(atualPercentual ?? 0).toFixed(1)}%` : money(atualValor);
           const alvoFormatado = meta.unidade === "percentual" ? `${meta.valor_alvo}%` : money(meta.valor_alvo);
+          const mensagem = mensagemStatus(status, progresso);
 
           return (
-            <div key={meta.id}>
+            <div
+              key={meta.id}
+              className={estourado ? "rounded-lg border border-[var(--accent-red)] bg-red-950/20 p-3 -m-3" : undefined}
+            >
               <div className="flex justify-between text-sm mb-1">
                 <span className="font-medium">{meta.nome}</span>
                 <span className="text-[var(--text-dim)]">
@@ -40,9 +48,9 @@ export function MetasProgresso({ progressos }: { progressos: ProgressoMeta[] }) 
                   style={{ width: `${largura}%`, background: cor, boxShadow: `0 0 8px -1px ${cor}` }}
                 />
               </div>
-              {MENSAGEM_STATUS[status] && (
-                <p className="text-xs mt-1" style={{ color: cor }}>
-                  {MENSAGEM_STATUS[status]}
+              {mensagem && (
+                <p className={`text-xs mt-1 ${estourado ? "font-semibold" : ""}`} style={{ color: cor }}>
+                  {mensagem}
                 </p>
               )}
             </div>
