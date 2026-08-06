@@ -47,6 +47,17 @@ export type LancamentoRow = {
   observacao: string | null;
 };
 
+export type Meta = {
+  id: string;
+  nome: string;
+  tipo: "limite" | "meta";
+  metrica: "faturamento" | "permutas" | "categoria";
+  categoria_id: string | null;
+  unidade: "percentual" | "valor";
+  valor_alvo: number;
+  ativo: boolean;
+};
+
 export type PagamentoRow = {
   id: string;
   lancamento_id: string;
