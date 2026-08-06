@@ -51,7 +51,7 @@ export function FluxoSemanal({
       <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--text-dim)] mb-4">
         Previsão semanal do mês
       </h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="flex gap-3 overflow-x-auto pb-1">
         {semanas.map((s) => {
           const entrada = segmentos(s.entradasPrevistas, s.entradasConsolidadas, maxValor);
           const saida = segmentos(s.saidasPrevistas, s.saidasConsolidadas, maxValor);
@@ -59,7 +59,7 @@ export function FluxoSemanal({
           const totalSaida = s.saidasPrevistas + s.saidasConsolidadas;
 
           return (
-            <div key={s.inicio} className="border border-[var(--border)] rounded-xl p-3">
+            <div key={s.inicio} className="flex-1 min-w-[150px] border border-[var(--border)] rounded-xl p-3">
               <span className="block text-[11px] text-[var(--text-dim)] mb-2">
                 {formatDataBR(s.inicio)}–{formatDataBR(s.fim)}
               </span>
