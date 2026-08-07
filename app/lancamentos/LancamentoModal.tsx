@@ -5,7 +5,7 @@ import { Modal } from "@/components/Modal";
 import { ModalError } from "@/components/ModalError";
 import { PermutaItemFields } from "./PermutaItemFields";
 import { salvarLancamentoAction, excluirLancamentoAction } from "./actions";
-import { valorLiquido } from "@/lib/calculations";
+import { valorLiquido, round2 } from "@/lib/calculations";
 import { money, hoje } from "@/lib/format";
 import { FORMAS_PAGAMENTO } from "@/lib/formasPagamento";
 import type { Categoria, LancamentoRow } from "@/lib/types";
@@ -32,7 +32,10 @@ export function LancamentoModal({
   const [forma, setForma] = useState("");
   const [incluiuPermuta, setIncluiuPermuta] = useState(false);
   const [valorPermuta, setValorPermuta] = useState(0);
-  const valorCaixa = Math.max(0, valorPago - (incluiuPermuta ? valorPermuta : 0));
+  // valorPago é o que entrou em dinheiro/outro - a permuta SOMA em cima
+  // disso, não é descontada (ex: 4.000 no pix + 1.000 em permuta = 5.000).
+  const totalPago = round2(valorPago + (incluiuPermuta ? valorPermuta : 0));
+  const diferenca = round2(valorLancamento - totalPago);
 
   return (
     <Modal open={open} onClose={onClose} title={lancamento ? "Editar lançamento" : "Novo lançamento"}>
@@ -160,7 +163,9 @@ export function LancamentoModal({
             <p className="col-span-2 text-xs text-[var(--text-dim)] uppercase tracking-wide">Pagamento</p>
 
             <div>
-              <label className="block text-xs text-[var(--text-dim)] mb-1">Valor pago (R$)</label>
+              <label className="block text-xs text-[var(--text-dim)] mb-1">
+                Valor pago{incluiuPermuta ? " em dinheiro/outro" : ""} (R$)
+              </label>
               <input
                 type="number"
                 step="0.01"
@@ -211,7 +216,7 @@ export function LancamentoModal({
                 className="w-full px-3 py-2 rounded bg-[var(--surface)] border border-[var(--border)]"
               />
               <p className="text-xs text-[var(--text-dim)] mt-1">
-                Valor líquido: {money(valorLiquido(valorCaixa || 0, taxa === "" ? null : taxa))}
+                Valor líquido: {money(valorLiquido(valorPago || 0, taxa === "" ? null : taxa))}
               </p>
             </div>
 
@@ -258,20 +263,32 @@ export function LancamentoModal({
                     type="number"
                     step="0.01"
                     name="permuta_valor"
-                    max={valorPago}
                     value={valorPermuta}
                     onChange={(e) => setValorPermuta(Number(e.target.value) || 0)}
                     required
                     className="w-full px-3 py-2 rounded bg-[var(--surface)] border border-[var(--border)]"
                   />
                   <p className="text-xs text-[var(--text-dim)] mt-1">
-                    Restante em {forma ? FORMAS_PAGAMENTO.find((f) => f.value === forma)?.label : "dinheiro/outro"}:{" "}
-                    {money(valorCaixa)} · esse valor também vira o valor do item no estoque de permutas
+                    Esse valor soma com o valor pago acima, e também vira o valor do item no estoque de permutas.
                   </p>
                 </div>
                 <PermutaItemFields />
               </>
             )}
+
+            <p
+              className={`col-span-2 text-xs font-medium ${
+                Math.abs(diferenca) <= 0.004
+                  ? "text-[var(--accent-green)]"
+                  : diferenca > 0
+                    ? "text-[var(--accent-amber)]"
+                    : "text-[var(--accent-red)]"
+              }`}
+            >
+              Total pago: {money(totalPago)} de {money(valorLancamento)}
+              {diferenca > 0.004 && ` — falta ${money(diferenca)} (ficará parcial)`}
+              {diferenca < -0.004 && ` — ${money(Math.abs(diferenca))} acima do valor do lançamento`}
+            </p>
           </div>
         )}
 

@@ -6,7 +6,7 @@ import { ModalError } from "@/components/ModalError";
 import { registrarPagamentoAction } from "./pagamentoActions";
 import { uploadComprovante } from "./uploadComprovante";
 import { PermutaItemFields } from "./PermutaItemFields";
-import { valorLiquido } from "@/lib/calculations";
+import { valorLiquido, round2 } from "@/lib/calculations";
 import { money, hoje } from "@/lib/format";
 import { FORMAS_PAGAMENTO } from "@/lib/formasPagamento";
 import type { LancamentoRow } from "@/lib/types";
@@ -30,7 +30,10 @@ export function PagamentoModal({
   const [erro, setErro] = useState<string | null>(null);
   const [incluiuPermuta, setIncluiuPermuta] = useState(false);
   const [valorPermuta, setValorPermuta] = useState(0);
-  const valorCaixa = Math.max(0, valor - (incluiuPermuta ? valorPermuta : 0));
+  // Mesma lógica do LancamentoModal: a permuta SOMA em cima do valor pago
+  // em dinheiro/outro, não é descontada dele.
+  const totalPago = round2(valor + (incluiuPermuta ? valorPermuta : 0));
+  const diferenca = round2(falta - totalPago);
 
   if (!lancamento) return null;
 
@@ -66,7 +69,9 @@ export function PagamentoModal({
         <ModalError mensagem={erro} />
 
         <div>
-          <label className="block text-xs text-[var(--text-dim)] mb-1">Valor pago (R$)</label>
+          <label className="block text-xs text-[var(--text-dim)] mb-1">
+            Valor pago{incluiuPermuta ? " em dinheiro/outro" : ""} (R$)
+          </label>
           <input
             type="number"
             step="0.01"
@@ -117,7 +122,7 @@ export function PagamentoModal({
             className="w-full px-3 py-2 rounded bg-[var(--surface-2)] border border-[var(--border)]"
           />
           <p className="text-xs text-[var(--text-dim)] mt-1">
-            Valor líquido: {money(valorLiquido(valorCaixa || 0, taxa === "" ? null : taxa))}
+            Valor líquido: {money(valorLiquido(valor || 0, taxa === "" ? null : taxa))}
           </p>
         </div>
 
@@ -164,20 +169,32 @@ export function PagamentoModal({
                 type="number"
                 step="0.01"
                 name="permuta_valor"
-                max={valor}
                 value={valorPermuta}
                 onChange={(e) => setValorPermuta(Number(e.target.value) || 0)}
                 required
                 className="w-full px-3 py-2 rounded bg-[var(--surface-2)] border border-[var(--border)]"
               />
               <p className="text-xs text-[var(--text-dim)] mt-1">
-                Restante em {forma ? FORMAS_PAGAMENTO.find((f) => f.value === forma)?.label : "dinheiro/outro"}:{" "}
-                {money(valorCaixa)} · esse valor também vira o valor do item no estoque de permutas
+                Esse valor soma com o valor pago acima, e também vira o valor do item no estoque de permutas.
               </p>
             </div>
             <PermutaItemFields />
           </>
         )}
+
+        <p
+          className={`col-span-2 text-xs font-medium ${
+            Math.abs(diferenca) <= 0.004
+              ? "text-[var(--accent-green)]"
+              : diferenca > 0
+                ? "text-[var(--accent-amber)]"
+                : "text-[var(--accent-red)]"
+          }`}
+        >
+          Total pago agora: {money(totalPago)} de {money(falta)} em aberto
+          {diferenca > 0.004 && ` — ainda vai faltar ${money(diferenca)}`}
+          {diferenca < -0.004 && ` — ${money(Math.abs(diferenca))} acima do que falta`}
+        </p>
 
         <div className="col-span-2 flex justify-end gap-2 mt-2">
           <button type="button" onClick={onClose} className="px-4 py-2 text-sm border border-[var(--border)] rounded">

@@ -46,14 +46,14 @@ export async function salvarLancamentoAction(formData: FormData) {
   // lançamentos já existentes, que têm seu próprio fluxo em PagamentoModal).
   if (!id && formData.get("registrar_pagamento") === "on") {
     const dataPagamento = formData.get("data_pagamento") as string;
-    const valorTotal = Number(formData.get("pagamento_valor"));
     const permutaDescricao = formData.get("permuta_descricao") as string;
     // Uma venda pode ser paga parte em dinheiro/cartão, parte em permuta -
-    // cada uma vira um pagamento separado, porque forma_pagamento é por
-    // pagamento, não por lançamento (ex: R$4.000 = R$2.500 em pix + R$1.500
-    // num item recebido em permuta).
+    // os dois valores SOMAM (não um desconta do outro), e cada um vira um
+    // pagamento separado, porque forma_pagamento é por pagamento, não por
+    // lançamento (ex: R$4.000 em pix + R$1.000 num item recebido em
+    // permuta = R$5.000 pagos).
+    const valorCaixa = round2(Number(formData.get("pagamento_valor")) || 0);
     const valorPermuta = permutaDescricao ? round2(Number(formData.get("permuta_valor")) || 0) : 0;
-    const valorCaixa = round2(valorTotal - valorPermuta);
 
     if (valorCaixa > 0.004) {
       const arquivo = formData.get("comprovante") as File | null;

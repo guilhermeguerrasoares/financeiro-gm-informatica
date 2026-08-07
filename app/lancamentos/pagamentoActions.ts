@@ -10,12 +10,11 @@ import { revalidarPaginasFinanceiras } from "./revalidate";
 export async function registrarPagamentoAction(formData: FormData) {
   const lancamentoId = formData.get("lancamento_id") as string;
   const dataPagamento = formData.get("data_pagamento") as string;
-  const valorTotal = Number(formData.get("valor"));
   const permutaDescricao = formData.get("permuta_descricao") as string;
-  // Mesma divisão do fluxo de criação (actions.ts): o pagamento de um saldo
-  // em aberto pode vir parte em dinheiro/cartão, parte em permuta.
+  // Mesma lógica do fluxo de criação (actions.ts): os dois valores SOMAM
+  // (dinheiro/cartão + permuta), não um desconta do outro.
+  const valorCaixa = round2(Number(formData.get("valor")) || 0);
   const valorPermuta = permutaDescricao ? round2(Number(formData.get("permuta_valor")) || 0) : 0;
-  const valorCaixa = round2(valorTotal - valorPermuta);
 
   if (valorCaixa > 0.004) {
     const taxaRaw = formData.get("taxa") as string;
