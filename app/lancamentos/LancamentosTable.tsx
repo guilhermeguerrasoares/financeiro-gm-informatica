@@ -1,14 +1,14 @@
 "use client";
 
 import { Fragment, useMemo, useState } from "react";
-import { Pencil, Paperclip, ChevronRight, ChevronDown } from "lucide-react";
+import { Pencil, Paperclip, ChevronRight, ChevronDown, Trash2 } from "lucide-react";
 import { StatusTag } from "@/components/StatusTag";
 import { saldo, status as calcStatus, totalPago } from "@/lib/calculations";
 import { money, formatDataBR, hoje } from "@/lib/format";
 import type { LancamentoRow, PagamentoRow, Categoria } from "@/lib/types";
 import { LancamentoModal } from "./LancamentoModal";
 import { PagamentoModal } from "./PagamentoModal";
-import { getComprovanteUrlAction, anexarComprovanteAction } from "./pagamentoActions";
+import { getComprovanteUrlAction, anexarComprovanteAction, estornarPagamentoAction } from "./pagamentoActions";
 import { uploadComprovante } from "./uploadComprovante";
 import { FORMAS_PAGAMENTO_LABEL } from "@/lib/formasPagamento";
 
@@ -70,6 +70,39 @@ function AnexarComprovanteButton({ pagamentoId, lancamentoId }: { pagamentoId: s
         }}
       />
     </label>
+  );
+}
+
+function EstornarPagamentoButton({ pagamentoId }: { pagamentoId: string }) {
+  const [enviando, setEnviando] = useState(false);
+
+  return (
+    <button
+      type="button"
+      aria-label="Excluir pagamento"
+      title="Excluir este pagamento"
+      disabled={enviando}
+      onClick={async (e) => {
+        e.stopPropagation();
+        if (
+          !confirm(
+            "Excluir este pagamento? Se ele tiver um item de permuta vinculado, o item também será removido. Essa ação não pode ser desfeita."
+          )
+        )
+          return;
+        setEnviando(true);
+        try {
+          await estornarPagamentoAction(pagamentoId);
+        } catch {
+          alert("Não foi possível excluir o pagamento.");
+        } finally {
+          setEnviando(false);
+        }
+      }}
+      className="p-1 rounded text-[var(--text-dim)] hover:text-[var(--accent-red)] hover:bg-[var(--surface)] disabled:opacity-50"
+    >
+      <Trash2 size={12} />
+    </button>
   );
 }
 
@@ -257,6 +290,9 @@ export function LancamentosTable({
                                 ) : (
                                   <AnexarComprovanteButton pagamentoId={p.id} lancamentoId={lancamento.id} />
                                 )}
+                              </td>
+                              <td className="py-1 text-right w-8">
+                                <EstornarPagamentoButton pagamentoId={p.id} />
                               </td>
                             </tr>
                           ))}

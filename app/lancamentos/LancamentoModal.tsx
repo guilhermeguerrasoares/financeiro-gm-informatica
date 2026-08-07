@@ -239,7 +239,7 @@ export function LancamentoModal({
                 checked={incluiuPermuta}
                 onChange={(e) => {
                   setIncluiuPermuta(e.target.checked);
-                  if (e.target.checked) setValorPermuta(valorPago);
+                  if (!e.target.checked) setValorPermuta(0);
                 }}
                 className="w-4 h-4"
               />

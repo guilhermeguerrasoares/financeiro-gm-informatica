@@ -147,7 +147,7 @@ export function PagamentoModal({
             checked={incluiuPermuta}
             onChange={(e) => {
               setIncluiuPermuta(e.target.checked);
-              if (e.target.checked) setValorPermuta(valor);
+              if (!e.target.checked) setValorPermuta(0);
             }}
             className="w-4 h-4"
           />

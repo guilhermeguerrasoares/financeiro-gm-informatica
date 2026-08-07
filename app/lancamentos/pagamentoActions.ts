@@ -58,8 +58,11 @@ export async function registrarPagamentoAction(formData: FormData) {
 }
 
 export async function estornarPagamentoAction(id: string) {
+  // itens_permuta.pagamento_id tem "on delete cascade" - excluir um
+  // pagamento em permuta apaga o item de estoque junto.
   await estornarPagamento(id);
   revalidarPaginasFinanceiras();
+  revalidatePath("/permutas");
 }
 
 export async function anexarComprovanteAction(pagamentoId: string, path: string) {
