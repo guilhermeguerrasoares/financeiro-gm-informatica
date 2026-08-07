@@ -10,9 +10,9 @@ const COR_STATUS: Record<ProgressoMeta["status"], string> = {
 
 function mensagemStatus(status: ProgressoMeta["status"], progresso: number): string | null {
   const pct = Math.round(progresso);
-  if (status === "estourado") return `Limite ultrapassado — ${pct}% do limite`;
-  if (status === "atingida") return `Meta atingida — ${pct}%${pct > 100 ? " (acima do previsto)" : ""}`;
-  if (status === "atencao") return `Perto do limite — ${pct}%`;
+  if (status === "estourado") return `Limite ultrapassado — está em ${pct}% do limite`;
+  if (status === "atingida") return `Meta atingida — está em ${pct}% do previsto`;
+  if (status === "atencao") return `Perto do limite — está em ${pct}% do limite`;
   return null;
 }
 
@@ -22,13 +22,20 @@ export function MetasProgresso({ progressos }: { progressos: ProgressoMeta[] }) 
   return (
     <div className="glass glow-ring rounded-2xl p-5 mb-6">
       <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--text-dim)] mb-4">Metas e limites</h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 gap-5">
         {progressos.map(({ meta, atualValor, atualPercentual, progresso, status }) => {
           const cor = COR_STATUS[status];
           const largura = Math.min(100, Math.max(0, progresso));
           const estourado = status === "estourado";
-          const atualFormatado = meta.unidade === "percentual" ? `${(atualPercentual ?? 0).toFixed(1)}%` : money(atualValor);
-          const alvoFormatado = meta.unidade === "percentual" ? `${meta.valor_alvo}%` : money(meta.valor_alvo);
+          // Para métricas em %, o "atual" já é uma fração do faturamento -
+          // mostrar junto com o alvo (também em %) como "X de Y" confunde,
+          // porque parecem a mesma grandeza quando não são. Por isso o alvo
+          // vira uma legenda separada, e o "quanto do alvo já foi usado"
+          // fica só na mensagem de status (via `progresso`).
+          const atualFormatado =
+            meta.unidade === "percentual" ? `${(atualPercentual ?? 0).toFixed(1)}% do faturamento` : money(atualValor);
+          const alvoFormatado =
+            meta.unidade === "percentual" ? `${meta.valor_alvo}% do faturamento` : money(meta.valor_alvo);
           const mensagem = mensagemStatus(status, progresso);
 
           return (
@@ -36,12 +43,13 @@ export function MetasProgresso({ progressos }: { progressos: ProgressoMeta[] }) 
               key={meta.id}
               className={estourado ? "rounded-lg border border-[var(--accent-red)] bg-red-950/20 p-3 -m-3" : undefined}
             >
-              <div className="flex justify-between text-sm mb-1">
+              <div className="flex justify-between items-baseline text-sm mb-0.5">
                 <span className="font-medium">{meta.nome}</span>
-                <span className="text-[var(--text-dim)]">
-                  {atualFormatado} de {alvoFormatado}
-                </span>
+                <span className="text-[var(--text-dim)]">{atualFormatado}</span>
               </div>
+              <p className="text-xs text-[var(--text-dim)] mb-1.5">
+                {meta.tipo === "limite" ? "Limite" : "Meta"}: {alvoFormatado}
+              </p>
               <div className="h-3 rounded-full bg-[var(--surface-2)] overflow-hidden">
                 <div
                   className="h-full rounded-full transition-all"
