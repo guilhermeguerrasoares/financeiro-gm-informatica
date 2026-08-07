@@ -44,11 +44,10 @@ export async function registrarPagamentoAction(formData: FormData) {
       comprovante_url: null,
       observacao: null,
     });
-    const valorEstimadoRaw = formData.get("permuta_valor_estimado") as string;
     await criarItemPermuta({
       pagamento_id: pagamentoPermuta.id,
       descricao: permutaDescricao,
-      valor_estimado: valorEstimadoRaw ? Number(valorEstimadoRaw) : valorPermuta,
+      valor_estimado: valorPermuta,
       status: "em_estoque",
     });
   }

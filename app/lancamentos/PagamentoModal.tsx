@@ -159,7 +159,7 @@ export function PagamentoModal({
         {incluiuPermuta && (
           <>
             <div className="col-span-2">
-              <label className="block text-xs text-[var(--text-dim)] mb-1">Valor recebido em permuta (R$)</label>
+              <label className="block text-xs text-[var(--text-dim)] mb-1">Valor do item em permuta (R$)</label>
               <input
                 type="number"
                 step="0.01"
@@ -172,7 +172,7 @@ export function PagamentoModal({
               />
               <p className="text-xs text-[var(--text-dim)] mt-1">
                 Restante em {forma ? FORMAS_PAGAMENTO.find((f) => f.value === forma)?.label : "dinheiro/outro"}:{" "}
-                {money(valorCaixa)}
+                {money(valorCaixa)} · esse valor também vira o valor do item no estoque de permutas
               </p>
             </div>
             <PermutaItemFields />

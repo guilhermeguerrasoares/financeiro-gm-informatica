@@ -7,13 +7,6 @@ export function PermutaItemFields() {
         name="permuta_descricao"
         placeholder="Ex: Notebook Dell usado"
         required
-        className="w-full mb-2 px-3 py-2 rounded bg-[var(--surface)] border border-[var(--border)]"
-      />
-      <label className="block text-xs text-[var(--text-dim)] mb-1">Valor estimado (R$)</label>
-      <input
-        type="number"
-        step="0.01"
-        name="permuta_valor_estimado"
         className="w-full px-3 py-2 rounded bg-[var(--surface)] border border-[var(--border)]"
       />
     </div>
