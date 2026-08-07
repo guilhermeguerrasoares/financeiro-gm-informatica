@@ -80,11 +80,14 @@ export async function dadosDashboard(periodo: PeriodoDashboard, periodoFluxo: Pe
 
   // Saldo consolidado: quanto cada conta tinha acumulado até o fim do
   // período (não só o que se moveu dentro dele) - é o "extrato daquele dia".
+  // Pagamento em permuta não é dinheiro entrando na conta - é item de
+  // estoque - por isso fica de fora daqui (só entra quando o item é
+  // revendido, via itensPermutaVendidosPeriodo/vender_item_permuta).
   const saldoPorConta = contas.map((c) => {
     const daConta = lancamentos.filter((l) => l.conta_financeira_id === c.id);
     const movimentado = daConta.reduce((a, l) => {
       const pagoAteFim = pagamentos
-        .filter((p) => p.lancamento_id === l.id && p.data_pagamento <= fim)
+        .filter((p) => p.lancamento_id === l.id && p.data_pagamento <= fim && p.forma_pagamento !== "permuta")
         .reduce((soma, p) => soma + p.valor, 0);
       return a + (l.tipo === "receita" ? pagoAteFim : -pagoAteFim);
     }, 0);
@@ -119,7 +122,12 @@ export async function dadosDashboard(periodo: PeriodoDashboard, periodoFluxo: Pe
     valorVendidoPermutasPeriodo += item.valor_venda ?? 0;
   }
 
-  const pagamentosNoPeriodo = pagamentos.filter((p) => p.data_pagamento >= inicio && p.data_pagamento <= fim);
+  // Mesma lógica do saldoPorConta acima: pagamento em permuta não é caixa,
+  // então não entra em "Entradas/Saídas do período" nem no drill-down do
+  // KpiCards - ele já aparece separadamente no painel de permutas.
+  const pagamentosNoPeriodo = pagamentos.filter(
+    (p) => p.data_pagamento >= inicio && p.data_pagamento <= fim && p.forma_pagamento !== "permuta"
+  );
   const pagamentosPeriodo: PagamentoComLancamento[] = pagamentosNoPeriodo
     .map((pagamento) => {
       const lancamento = lancamentos.find((l) => l.id === pagamento.lancamento_id);
@@ -145,6 +153,11 @@ export async function dadosDashboard(periodo: PeriodoDashboard, periodoFluxo: Pe
   );
   const idsFluxo = new Set(lancamentosFluxo.map((l) => l.id));
   const pagamentosFluxo = pagamentos.filter((p) => idsFluxo.has(p.lancamento_id));
+  // "Consolidado" no gráfico é caixa já recebido - pagamento em permuta não
+  // conta aqui (mesmo raciocínio do saldoPorConta acima), mas o `restante`
+  // (previsto) usa `pagamentosFluxo` completo, porque a dívida já foi
+  // quitada em troca de mercadoria, então não é mais "a receber".
+  const pagamentosFluxoCaixa = pagamentosFluxo.filter((p) => p.forma_pagamento !== "permuta");
 
   const fluxoDiario: DiaFluxo[] = diasEntre(periodoFluxo.inicio, periodoFluxo.fim).map((data) => {
     const doDia = lancamentosFluxo.filter((l) => l.vencimento === data);
@@ -154,13 +167,13 @@ export async function dadosDashboard(periodo: PeriodoDashboard, periodoFluxo: Pe
     let saidasConsolidadas = 0;
 
     for (const l of doDia) {
-      const pago = totalPago(pagamentosFluxo, l.id);
+      const pagoCaixa = totalPago(pagamentosFluxoCaixa, l.id);
       const restante = Math.max(0, saldo(l, pagamentosFluxo));
       if (l.tipo === "receita") {
-        entradasConsolidadas += pago;
+        entradasConsolidadas += pagoCaixa;
         entradasPrevistas += restante;
       } else {
-        saidasConsolidadas += pago;
+        saidasConsolidadas += pagoCaixa;
         saidasPrevistas += restante;
       }
     }
