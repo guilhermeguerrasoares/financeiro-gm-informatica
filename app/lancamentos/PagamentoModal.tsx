@@ -8,6 +8,7 @@ import { uploadComprovante } from "./uploadComprovante";
 import { PermutaItemFields } from "./PermutaItemFields";
 import { valorLiquido } from "@/lib/calculations";
 import { money, hoje } from "@/lib/format";
+import { FORMAS_PAGAMENTO } from "@/lib/formasPagamento";
 import type { LancamentoRow } from "@/lib/types";
 
 export function PagamentoModal({
@@ -27,6 +28,9 @@ export function PagamentoModal({
   const [arquivo, setArquivo] = useState<File | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const [incluiuPermuta, setIncluiuPermuta] = useState(false);
+  const [valorPermuta, setValorPermuta] = useState(0);
+  const valorCaixa = Math.max(0, valor - (incluiuPermuta ? valorPermuta : 0));
 
   if (!lancamento) return null;
 
@@ -85,7 +89,9 @@ export function PagamentoModal({
         </div>
 
         <div className="col-span-2">
-          <label className="block text-xs text-[var(--text-dim)] mb-1">Forma de pagamento</label>
+          <label className="block text-xs text-[var(--text-dim)] mb-1">
+            Forma de pagamento{incluiuPermuta ? " (parte em dinheiro/outro)" : ""}
+          </label>
           <select
             name="forma_pagamento"
             value={forma}
@@ -93,13 +99,11 @@ export function PagamentoModal({
             className="w-full px-3 py-2 rounded bg-[var(--surface-2)] border border-[var(--border)]"
           >
             <option value="">Não informada</option>
-            <option value="pix">Pix</option>
-            <option value="dinheiro">Dinheiro</option>
-            <option value="boleto">Boleto</option>
-            <option value="transferencia">Transferência</option>
-            <option value="cartao_credito">Cartão de crédito</option>
-            <option value="cartao_debito">Cartão de débito</option>
-            <option value="permuta">Permuta</option>
+            {FORMAS_PAGAMENTO.filter((f) => f.value !== "permuta").map((f) => (
+              <option key={f.value} value={f.value}>
+                {f.label}
+              </option>
+            ))}
           </select>
         </div>
 
@@ -113,7 +117,7 @@ export function PagamentoModal({
             className="w-full px-3 py-2 rounded bg-[var(--surface-2)] border border-[var(--border)]"
           />
           <p className="text-xs text-[var(--text-dim)] mt-1">
-            Valor líquido: {money(valorLiquido(valor || 0, taxa === "" ? null : taxa))}
+            Valor líquido: {money(valorLiquido(valorCaixa || 0, taxa === "" ? null : taxa))}
           </p>
         </div>
 
@@ -136,7 +140,44 @@ export function PagamentoModal({
           />
         </div>
 
-        {forma === "permuta" && <PermutaItemFields />}
+        <div className="col-span-2 flex items-center gap-2 pt-1 border-t border-[var(--border)] mt-1">
+          <input
+            id="incluiu-permuta-pag"
+            type="checkbox"
+            checked={incluiuPermuta}
+            onChange={(e) => {
+              setIncluiuPermuta(e.target.checked);
+              if (e.target.checked) setValorPermuta(valor);
+            }}
+            className="w-4 h-4"
+          />
+          <label htmlFor="incluiu-permuta-pag" className="text-sm">
+            Uma parte foi recebida em permuta?
+          </label>
+        </div>
+
+        {incluiuPermuta && (
+          <>
+            <div className="col-span-2">
+              <label className="block text-xs text-[var(--text-dim)] mb-1">Valor recebido em permuta (R$)</label>
+              <input
+                type="number"
+                step="0.01"
+                name="permuta_valor"
+                max={valor}
+                value={valorPermuta}
+                onChange={(e) => setValorPermuta(Number(e.target.value) || 0)}
+                required
+                className="w-full px-3 py-2 rounded bg-[var(--surface-2)] border border-[var(--border)]"
+              />
+              <p className="text-xs text-[var(--text-dim)] mt-1">
+                Restante em {forma ? FORMAS_PAGAMENTO.find((f) => f.value === forma)?.label : "dinheiro/outro"}:{" "}
+                {money(valorCaixa)}
+              </p>
+            </div>
+            <PermutaItemFields />
+          </>
+        )}
 
         <div className="col-span-2 flex justify-end gap-2 mt-2">
           <button type="button" onClick={onClose} className="px-4 py-2 text-sm border border-[var(--border)] rounded">

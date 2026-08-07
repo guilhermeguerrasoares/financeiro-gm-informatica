@@ -30,6 +30,9 @@ export function LancamentoModal({
   const [valorPago, setValorPago] = useState(lancamento?.valor ?? 0);
   const [taxa, setTaxa] = useState<number | "">("");
   const [forma, setForma] = useState("");
+  const [incluiuPermuta, setIncluiuPermuta] = useState(false);
+  const [valorPermuta, setValorPermuta] = useState(0);
+  const valorCaixa = Math.max(0, valorPago - (incluiuPermuta ? valorPermuta : 0));
 
   return (
     <Modal open={open} onClose={onClose} title={lancamento ? "Editar lançamento" : "Novo lançamento"}>
@@ -180,7 +183,9 @@ export function LancamentoModal({
             </div>
 
             <div className="col-span-2">
-              <label className="block text-xs text-[var(--text-dim)] mb-1">Forma de pagamento</label>
+              <label className="block text-xs text-[var(--text-dim)] mb-1">
+                Forma de pagamento{incluiuPermuta ? " (parte em dinheiro/outro)" : ""}
+              </label>
               <select
                 name="forma_pagamento"
                 value={forma}
@@ -188,7 +193,7 @@ export function LancamentoModal({
                 className="w-full px-3 py-2 rounded bg-[var(--surface)] border border-[var(--border)]"
               >
                 <option value="">Não informada</option>
-                {FORMAS_PAGAMENTO.map((f) => (
+                {FORMAS_PAGAMENTO.filter((f) => f.value !== "permuta").map((f) => (
                   <option key={f.value} value={f.value}>
                     {f.label}
                   </option>
@@ -206,7 +211,7 @@ export function LancamentoModal({
                 className="w-full px-3 py-2 rounded bg-[var(--surface)] border border-[var(--border)]"
               />
               <p className="text-xs text-[var(--text-dim)] mt-1">
-                Valor líquido: {money(valorLiquido(valorPago || 0, taxa === "" ? null : taxa))}
+                Valor líquido: {money(valorLiquido(valorCaixa || 0, taxa === "" ? null : taxa))}
               </p>
             </div>
 
@@ -227,7 +232,44 @@ export function LancamentoModal({
               />
             </div>
 
-            {forma === "permuta" && <PermutaItemFields />}
+            <div className="col-span-2 flex items-center gap-2 pt-1 border-t border-[var(--border)] mt-1">
+              <input
+                id="incluiu-permuta"
+                type="checkbox"
+                checked={incluiuPermuta}
+                onChange={(e) => {
+                  setIncluiuPermuta(e.target.checked);
+                  if (e.target.checked) setValorPermuta(valorPago);
+                }}
+                className="w-4 h-4"
+              />
+              <label htmlFor="incluiu-permuta" className="text-sm">
+                Uma parte foi recebida em permuta?
+              </label>
+            </div>
+
+            {incluiuPermuta && (
+              <>
+                <div className="col-span-2">
+                  <label className="block text-xs text-[var(--text-dim)] mb-1">Valor recebido em permuta (R$)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    name="permuta_valor"
+                    max={valorPago}
+                    value={valorPermuta}
+                    onChange={(e) => setValorPermuta(Number(e.target.value) || 0)}
+                    required
+                    className="w-full px-3 py-2 rounded bg-[var(--surface)] border border-[var(--border)]"
+                  />
+                  <p className="text-xs text-[var(--text-dim)] mt-1">
+                    Restante em {forma ? FORMAS_PAGAMENTO.find((f) => f.value === forma)?.label : "dinheiro/outro"}:{" "}
+                    {money(valorCaixa)}
+                  </p>
+                </div>
+                <PermutaItemFields />
+              </>
+            )}
           </div>
         )}
 

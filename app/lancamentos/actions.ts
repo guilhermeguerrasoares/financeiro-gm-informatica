@@ -9,6 +9,7 @@ import {
 } from "@/lib/queries/lancamentos";
 import { registrarPagamento } from "@/lib/queries/pagamentos";
 import { criarItemPermuta, reverterItemPermutaPorLancamento } from "@/lib/queries/itensPermuta";
+import { round2 } from "@/lib/calculations";
 import { revalidarPaginasFinanceiras } from "./revalidate";
 
 async function uploadComprovanteServidor(arquivo: File, lancamentoId: string): Promise<string | null> {
@@ -44,30 +45,48 @@ export async function salvarLancamentoAction(formData: FormData) {
   // Pagamento inline só se aplica à criação (o botão "Pagar" da tabela cobre
   // lançamentos já existentes, que têm seu próprio fluxo em PagamentoModal).
   if (!id && formData.get("registrar_pagamento") === "on") {
-    const arquivo = formData.get("comprovante") as File | null;
-    const comprovantePath = arquivo ? await uploadComprovanteServidor(arquivo, lancamento.id) : null;
+    const dataPagamento = formData.get("data_pagamento") as string;
+    const valorTotal = Number(formData.get("pagamento_valor"));
+    const permutaDescricao = formData.get("permuta_descricao") as string;
+    // Uma venda pode ser paga parte em dinheiro/cartão, parte em permuta -
+    // cada uma vira um pagamento separado, porque forma_pagamento é por
+    // pagamento, não por lançamento (ex: R$4.000 = R$2.500 em pix + R$1.500
+    // num item recebido em permuta).
+    const valorPermuta = permutaDescricao ? round2(Number(formData.get("permuta_valor")) || 0) : 0;
+    const valorCaixa = round2(valorTotal - valorPermuta);
 
-    const taxaRaw = formData.get("taxa") as string;
-    const formaPagamento = (formData.get("forma_pagamento") as string) || null;
-    const pagamento = await registrarPagamento({
-      lancamento_id: lancamento.id,
-      valor: Number(formData.get("pagamento_valor")),
-      taxa: taxaRaw ? Number(taxaRaw) : null,
-      forma_pagamento: formaPagamento,
-      data_pagamento: formData.get("data_pagamento") as string,
-      comprovante_url: comprovantePath,
-      observacao: null,
-    });
+    if (valorCaixa > 0.004) {
+      const arquivo = formData.get("comprovante") as File | null;
+      const comprovantePath = arquivo ? await uploadComprovanteServidor(arquivo, lancamento.id) : null;
+      const taxaRaw = formData.get("taxa") as string;
+      await registrarPagamento({
+        lancamento_id: lancamento.id,
+        valor: valorCaixa,
+        taxa: taxaRaw ? Number(taxaRaw) : null,
+        forma_pagamento: (formData.get("forma_pagamento") as string) || null,
+        data_pagamento: dataPagamento,
+        comprovante_url: comprovantePath,
+        observacao: null,
+      });
+    }
 
     // Mesmo trade-off não-transacional do fluxo de pagamento avulso: se a
     // criação do item de permuta falhar aqui, o pagamento já foi gravado.
-    const permutaDescricao = formData.get("permuta_descricao") as string;
-    if (formaPagamento === "permuta" && permutaDescricao) {
+    if (valorPermuta > 0.004 && permutaDescricao) {
+      const pagamentoPermuta = await registrarPagamento({
+        lancamento_id: lancamento.id,
+        valor: valorPermuta,
+        taxa: null,
+        forma_pagamento: "permuta",
+        data_pagamento: dataPagamento,
+        comprovante_url: null,
+        observacao: null,
+      });
       const valorEstimadoRaw = formData.get("permuta_valor_estimado") as string;
       await criarItemPermuta({
-        pagamento_id: pagamento.id,
+        pagamento_id: pagamentoPermuta.id,
         descricao: permutaDescricao,
-        valor_estimado: valorEstimadoRaw ? Number(valorEstimadoRaw) : null,
+        valor_estimado: valorEstimadoRaw ? Number(valorEstimadoRaw) : valorPermuta,
         status: "em_estoque",
       });
       revalidatePath("/permutas");
