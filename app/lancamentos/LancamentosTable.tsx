@@ -93,8 +93,8 @@ function EstornarPagamentoButton({ pagamentoId }: { pagamentoId: string }) {
         setEnviando(true);
         try {
           await estornarPagamentoAction(pagamentoId);
-        } catch {
-          alert("Não foi possível excluir o pagamento.");
+        } catch (e) {
+          alert(e instanceof Error ? e.message : "Não foi possível excluir o pagamento.");
         } finally {
           setEnviando(false);
         }

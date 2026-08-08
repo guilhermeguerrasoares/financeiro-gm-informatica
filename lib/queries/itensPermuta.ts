@@ -23,6 +23,17 @@ export async function listarItensPermuta() {
   return data as ItemPermuta[];
 }
 
+export async function buscarItemPermutaPorPagamento(pagamentoId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("itens_permuta")
+    .select("*")
+    .eq("pagamento_id", pagamentoId)
+    .maybeSingle();
+  if (error) throw error;
+  return data as ItemPermuta | null;
+}
+
 export async function criarItemPermuta(input: {
   pagamento_id: string;
   descricao: string;

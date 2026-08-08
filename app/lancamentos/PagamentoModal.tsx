@@ -6,9 +6,10 @@ import { ModalError } from "@/components/ModalError";
 import { registrarPagamentoAction } from "./pagamentoActions";
 import { uploadComprovante } from "./uploadComprovante";
 import { PermutaItemFields } from "./PermutaItemFields";
-import { valorLiquido, round2 } from "@/lib/calculations";
+import { valorLiquido } from "@/lib/calculations";
 import { money, hoje } from "@/lib/format";
 import { FORMAS_PAGAMENTO } from "@/lib/formasPagamento";
+import { usePermutaSplit } from "./usePermutaSplit";
 import type { LancamentoRow } from "@/lib/types";
 
 export function PagamentoModal({
@@ -28,12 +29,10 @@ export function PagamentoModal({
   const [arquivo, setArquivo] = useState<File | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
-  const [incluiuPermuta, setIncluiuPermuta] = useState(false);
-  const [valorPermuta, setValorPermuta] = useState(0);
-  // Mesma lógica do LancamentoModal: a permuta SOMA em cima do valor pago
-  // em dinheiro/outro, não é descontada dele.
-  const totalPago = round2(valor + (incluiuPermuta ? valorPermuta : 0));
-  const diferenca = round2(falta - totalPago);
+  const { incluiuPermuta, setIncluiuPermuta, valorPermuta, setValorPermuta, totalPago, diferenca } = usePermutaSplit(
+    valor,
+    falta
+  );
 
   if (!lancamento) return null;
 
@@ -54,8 +53,8 @@ export function PagamentoModal({
             }
             await registrarPagamentoAction(formData);
             onClose();
-          } catch {
-            setErro("Não foi possível registrar o pagamento. Tente novamente.");
+          } catch (e) {
+            setErro(e instanceof Error ? e.message : "Não foi possível registrar o pagamento. Tente novamente.");
           } finally {
             setEnviando(false);
           }
@@ -150,10 +149,7 @@ export function PagamentoModal({
             id="incluiu-permuta-pag"
             type="checkbox"
             checked={incluiuPermuta}
-            onChange={(e) => {
-              setIncluiuPermuta(e.target.checked);
-              if (!e.target.checked) setValorPermuta(0);
-            }}
+            onChange={(e) => setIncluiuPermuta(e.target.checked)}
             className="w-4 h-4"
           />
           <label htmlFor="incluiu-permuta-pag" className="text-sm">

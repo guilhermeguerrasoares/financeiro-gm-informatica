@@ -2,54 +2,26 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { registrarPagamento, estornarPagamento, atualizarComprovantePagamento } from "@/lib/queries/pagamentos";
-import { criarItemPermuta } from "@/lib/queries/itensPermuta";
-import { round2 } from "@/lib/calculations";
+import { estornarPagamento, atualizarComprovantePagamento } from "@/lib/queries/pagamentos";
+import { buscarItemPermutaPorPagamento } from "@/lib/queries/itensPermuta";
+import { registrarPagamentoComPermuta } from "./permutaPagamento";
 import { revalidarPaginasFinanceiras } from "./revalidate";
 
 export async function registrarPagamentoAction(formData: FormData) {
   const lancamentoId = formData.get("lancamento_id") as string;
   const dataPagamento = formData.get("data_pagamento") as string;
-  const permutaDescricao = formData.get("permuta_descricao") as string;
-  // Mesma lógica do fluxo de criação (actions.ts): os dois valores SOMAM
-  // (dinheiro/cartão + permuta), não um desconta do outro.
-  const valorCaixa = round2(Number(formData.get("valor")) || 0);
-  const valorPermuta = permutaDescricao ? round2(Number(formData.get("permuta_valor")) || 0) : 0;
+  const taxaRaw = formData.get("taxa") as string;
 
-  if (valorCaixa > 0.004) {
-    const taxaRaw = formData.get("taxa") as string;
-    await registrarPagamento({
-      lancamento_id: lancamentoId,
-      valor: valorCaixa,
-      taxa: taxaRaw ? Number(taxaRaw) : null,
-      forma_pagamento: (formData.get("forma_pagamento") as string) || null,
-      data_pagamento: dataPagamento,
-      comprovante_url: (formData.get("comprovante_path") as string) || null,
-      observacao: null,
-    });
-  }
-
-  // Not wrapped in a DB transaction: pagamento e itens_permuta são duas
-  // gravações separadas. Se a segunda falhar depois da primeira, o
-  // pagamento fica registrado mas o item de permuta não - aceito como
-  // trade-off de v1 (uma RPC no Postgres fecharia essa brecha depois).
-  if (valorPermuta > 0.004 && permutaDescricao) {
-    const pagamentoPermuta = await registrarPagamento({
-      lancamento_id: lancamentoId,
-      valor: valorPermuta,
-      taxa: null,
-      forma_pagamento: "permuta",
-      data_pagamento: dataPagamento,
-      comprovante_url: null,
-      observacao: null,
-    });
-    await criarItemPermuta({
-      pagamento_id: pagamentoPermuta.id,
-      descricao: permutaDescricao,
-      valor_estimado: valorPermuta,
-      status: "em_estoque",
-    });
-  }
+  await registrarPagamentoComPermuta({
+    lancamentoId,
+    dataPagamento,
+    valorCaixa: Number(formData.get("valor")) || 0,
+    taxa: taxaRaw ? Number(taxaRaw) : null,
+    formaPagamento: (formData.get("forma_pagamento") as string) || null,
+    comprovanteUrl: (formData.get("comprovante_path") as string) || null,
+    permutaDescricao: (formData.get("permuta_descricao") as string) || "",
+    valorPermuta: Number(formData.get("permuta_valor")) || 0,
+  });
 
   revalidarPaginasFinanceiras();
   revalidatePath("/permutas");
@@ -57,7 +29,15 @@ export async function registrarPagamentoAction(formData: FormData) {
 
 export async function estornarPagamentoAction(id: string) {
   // itens_permuta.pagamento_id tem "on delete cascade" - excluir um
-  // pagamento em permuta apaga o item de estoque junto.
+  // pagamento em permuta apaga o item de estoque junto. Se o item já foi
+  // vendido (ou baixado de outra forma), isso deixaria a venda - e o lucro
+  // dela - órfã, sem nenhum item de permuta por trás. Por isso bloqueamos.
+  const item = await buscarItemPermutaPorPagamento(id);
+  if (item && item.status !== "em_estoque") {
+    throw new Error(
+      "Este pagamento gerou um item de permuta que já foi vendido (ou baixado). Reverta isso antes de excluir o pagamento."
+    );
+  }
   await estornarPagamento(id);
   revalidarPaginasFinanceiras();
   revalidatePath("/permutas");

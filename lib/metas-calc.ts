@@ -9,6 +9,7 @@ export type ProgressoMeta = {
   atualPercentual: number | null;
   progresso: number;
   status: StatusMeta;
+  faturamento: number;
 };
 
 function somaFaturamento(lancamentos: LancamentoRow[], pagamentos: PagamentoRow[], inicio: string, fim: string): number {
@@ -77,6 +78,6 @@ export function calcularProgressoMetas(
         status = progresso > 100 ? "estourado" : progresso >= 80 ? "atencao" : "ok";
       }
 
-      return { meta, atualValor, atualPercentual, progresso, status };
+      return { meta, atualValor, atualPercentual, progresso, status, faturamento };
     });
 }

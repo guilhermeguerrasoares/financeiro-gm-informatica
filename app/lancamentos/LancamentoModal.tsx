@@ -5,9 +5,10 @@ import { Modal } from "@/components/Modal";
 import { ModalError } from "@/components/ModalError";
 import { PermutaItemFields } from "./PermutaItemFields";
 import { salvarLancamentoAction, excluirLancamentoAction } from "./actions";
-import { valorLiquido, round2 } from "@/lib/calculations";
+import { valorLiquido } from "@/lib/calculations";
 import { money, hoje } from "@/lib/format";
 import { FORMAS_PAGAMENTO } from "@/lib/formasPagamento";
+import { usePermutaSplit } from "./usePermutaSplit";
 import type { Categoria, LancamentoRow } from "@/lib/types";
 
 export function LancamentoModal({
@@ -30,12 +31,10 @@ export function LancamentoModal({
   const [valorPago, setValorPago] = useState(lancamento?.valor ?? 0);
   const [taxa, setTaxa] = useState<number | "">("");
   const [forma, setForma] = useState("");
-  const [incluiuPermuta, setIncluiuPermuta] = useState(false);
-  const [valorPermuta, setValorPermuta] = useState(0);
-  // valorPago é o que entrou em dinheiro/outro - a permuta SOMA em cima
-  // disso, não é descontada (ex: 4.000 no pix + 1.000 em permuta = 5.000).
-  const totalPago = round2(valorPago + (incluiuPermuta ? valorPermuta : 0));
-  const diferenca = round2(valorLancamento - totalPago);
+  const { incluiuPermuta, setIncluiuPermuta, valorPermuta, setValorPermuta, totalPago, diferenca } = usePermutaSplit(
+    valorPago,
+    valorLancamento
+  );
 
   return (
     <Modal open={open} onClose={onClose} title={lancamento ? "Editar lançamento" : "Novo lançamento"}>
@@ -47,8 +46,8 @@ export function LancamentoModal({
           try {
             await salvarLancamentoAction(formData);
             onClose();
-          } catch {
-            setErro("Não foi possível salvar o lançamento. Tente novamente.");
+          } catch (e) {
+            setErro(e instanceof Error ? e.message : "Não foi possível salvar o lançamento. Tente novamente.");
           } finally {
             setEnviando(false);
           }
@@ -242,10 +241,7 @@ export function LancamentoModal({
                 id="incluiu-permuta"
                 type="checkbox"
                 checked={incluiuPermuta}
-                onChange={(e) => {
-                  setIncluiuPermuta(e.target.checked);
-                  if (!e.target.checked) setValorPermuta(0);
-                }}
+                onChange={(e) => setIncluiuPermuta(e.target.checked)}
                 className="w-4 h-4"
               />
               <label htmlFor="incluiu-permuta" className="text-sm">
