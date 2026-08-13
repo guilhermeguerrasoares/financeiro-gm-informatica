@@ -33,12 +33,23 @@ function mensagemStatus(p: ProgressoMeta): string | null {
 export function MetasProgresso({ progressos }: { progressos: ProgressoMeta[] }) {
   if (progressos.length === 0) return null;
 
+  // `faturamento` é o mesmo em todo item da lista (é o total do período,
+  // não algo por meta) - mostrado uma vez no cabeçalho em vez de repetido
+  // em cada meta percentual.
+  const faturamentoPeriodo = progressos[0].faturamento;
+  const temMetaPercentual = progressos.some((p) => p.meta.unidade === "percentual");
+
   return (
     <div className="glass glow-ring rounded-2xl p-5 mb-6">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--text-dim)] mb-4">Metas e limites</h2>
+      <div className="flex justify-between items-baseline mb-4">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--text-dim)]">Metas e limites</h2>
+        {temMetaPercentual && (
+          <span className="text-xs text-[var(--text-dim)]">Faturamento do período: {money(faturamentoPeriodo)}</span>
+        )}
+      </div>
       <div className="grid grid-cols-1 gap-5">
         {progressos.map((p) => {
-          const { meta, atualValor, atualPercentual, progresso, status, faturamento } = p;
+          const { meta, atualValor, atualPercentual, progresso, status } = p;
           const cor = COR_STATUS[status];
           const estourado = status === "estourado";
           const mensagem = mensagemStatus(p);
@@ -72,8 +83,7 @@ export function MetasProgresso({ progressos }: { progressos: ProgressoMeta[] }) 
                       title={`${meta.tipo === "limite" ? "Limite" : "Meta"}: ${meta.valor_alvo}%`}
                     />
                   </div>
-                  <div className="flex justify-between text-[10px] text-[var(--text-dim)] mt-1">
-                    <span>Faturamento do período: {money(faturamento)}</span>
+                  <div className="flex justify-end text-[10px] text-[var(--text-dim)] mt-1">
                     <span>
                       {meta.tipo === "limite" ? "Limite" : "Meta"}: {meta.valor_alvo}%
                     </span>

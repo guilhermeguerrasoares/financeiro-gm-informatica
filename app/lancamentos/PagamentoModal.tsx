@@ -43,6 +43,9 @@ export function PagamentoModal({
           setEnviando(true);
           setErro(null);
           try {
+            if (totalPago <= 0.004) {
+              throw new Error("Informe um valor pago (em dinheiro/outro e/ou em permuta) maior que zero.");
+            }
             // Uploads before creating the pagamento row (same non-transactional
             // tradeoff as the permuta item in pagamentoActions.ts): if
             // registrarPagamentoAction fails after this succeeds, the file is

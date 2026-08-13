@@ -9,6 +9,7 @@ import {
 } from "@/lib/queries/lancamentos";
 import { reverterItemPermutaPorLancamento } from "@/lib/queries/itensPermuta";
 import { registrarPagamentoComPermuta } from "./permutaPagamento";
+import { round2 } from "@/lib/calculations";
 import { revalidarPaginasFinanceiras } from "./revalidate";
 
 async function uploadComprovanteServidor(arquivo: File, lancamentoId: string): Promise<string | null> {
@@ -22,6 +23,20 @@ async function uploadComprovanteServidor(arquivo: File, lancamentoId: string): P
 
 export async function salvarLancamentoAction(formData: FormData) {
   const id = formData.get("id") as string | null;
+  const registrandoPagamento = !id && formData.get("registrar_pagamento") === "on";
+
+  // Validado antes de criar o lançamento: se deixarmos passar e
+  // registrarPagamentoComPermuta rejeitar só depois, o lançamento já teria
+  // sido criado sem nenhum pagamento, e reenviar o formulário (que não tem
+  // um `id` pra reaproveitar) criaria um lançamento duplicado.
+  if (registrandoPagamento) {
+    const permutaDescricao = (formData.get("permuta_descricao") as string) || "";
+    const valorCaixa = round2(Number(formData.get("pagamento_valor")) || 0);
+    const valorPermuta = permutaDescricao ? round2(Number(formData.get("permuta_valor")) || 0) : 0;
+    if (valorCaixa <= 0.004 && valorPermuta <= 0.004) {
+      throw new Error("Informe um valor pago (em dinheiro/outro e/ou em permuta) maior que zero.");
+    }
+  }
 
   const input = {
     descricao: formData.get("descricao") as string,
@@ -43,7 +58,7 @@ export async function salvarLancamentoAction(formData: FormData) {
 
   // Pagamento inline só se aplica à criação (o botão "Pagar" da tabela cobre
   // lançamentos já existentes, que têm seu próprio fluxo em PagamentoModal).
-  if (!id && formData.get("registrar_pagamento") === "on") {
+  if (registrandoPagamento) {
     const dataPagamento = formData.get("data_pagamento") as string;
     const permutaDescricao = (formData.get("permuta_descricao") as string) || "";
     const arquivo = formData.get("comprovante") as File | null;
