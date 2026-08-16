@@ -74,10 +74,6 @@ export async function dadosDashboard(periodo: PeriodoDashboard, periodoFluxo: Pe
   );
   const totalSemana = venceSemana.reduce((acc, l) => acc + saldo(l, pagamentos), 0);
 
-  const receitaPeriodo = lancamentos
-    .filter((l) => l.tipo === "receita" && l.vencimento && l.vencimento >= inicio && l.vencimento <= fim)
-    .reduce((acc, l) => acc + totalPago(pagamentos, l.id), 0);
-
   // Saldo consolidado: quanto cada conta tinha acumulado até o fim do
   // período (não só o que se moveu dentro dele) - é o "extrato daquele dia".
   // Pagamento em permuta não é dinheiro entrando na conta - é item de
@@ -188,7 +184,6 @@ export async function dadosDashboard(periodo: PeriodoDashboard, periodoFluxo: Pe
     contasAtrasadas: atrasados.length,
     atrasados: atrasadosComSaldo,
     totalSemana,
-    receitaPeriodo,
     clientesInadimplentes: clientesInadimplentesLista.length,
     clientesInadimplentesLista,
     totalEntradasPeriodo,
