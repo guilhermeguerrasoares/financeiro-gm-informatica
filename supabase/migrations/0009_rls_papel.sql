@@ -15,7 +15,8 @@ begin
     'fornecedores',
     'lancamentos',
     'pagamentos',
-    'itens_permuta'
+    'itens_permuta',
+    'metas'
   ]
   loop
     execute format('drop policy if exists %I on %I', t || ': acesso completo para usuário com perfil', t);
