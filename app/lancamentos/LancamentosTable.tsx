@@ -5,7 +5,7 @@ import { Pencil, Paperclip, ChevronRight, ChevronDown, Trash2 } from "lucide-rea
 import { StatusTag } from "@/components/StatusTag";
 import { saldo, status as calcStatus, totalPago } from "@/lib/calculations";
 import { money, formatDataBR, hoje } from "@/lib/format";
-import type { LancamentoRow, PagamentoRow, Categoria } from "@/lib/types";
+import type { LancamentoRow, PagamentoRow, Categoria, Cliente, Fornecedor } from "@/lib/types";
 import { LancamentoModal } from "./LancamentoModal";
 import { PagamentoModal } from "./PagamentoModal";
 import { getComprovanteUrlAction, anexarComprovanteAction, estornarPagamentoAction } from "./pagamentoActions";
@@ -110,10 +110,14 @@ export function LancamentosTable({
   lancamentos,
   pagamentos,
   categorias,
+  clientes,
+  fornecedores,
 }: {
   lancamentos: LancamentoRow[];
   pagamentos: PagamentoRow[];
   categorias: Categoria[];
+  clientes: Cliente[];
+  fornecedores: Fornecedor[];
 }) {
   const [filtroStatus, setFiltroStatus] = useState<"pendentes" | "atrasado" | "quitado" | "todos">(
     "pendentes"
@@ -319,6 +323,8 @@ export function LancamentosTable({
         onClose={() => setModalOpen(false)}
         lancamento={editando}
         categorias={categorias}
+        clientes={clientes}
+        fornecedores={fornecedores}
       />
 
       <PagamentoModal

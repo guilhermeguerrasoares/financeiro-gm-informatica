@@ -9,18 +9,22 @@ import { valorLiquido } from "@/lib/calculations";
 import { money, hoje } from "@/lib/format";
 import { FORMAS_PAGAMENTO } from "@/lib/formasPagamento";
 import { usePermutaSplit } from "./usePermutaSplit";
-import type { Categoria, LancamentoRow } from "@/lib/types";
+import type { Categoria, Cliente, Fornecedor, LancamentoRow } from "@/lib/types";
 
 export function LancamentoModal({
   open,
   onClose,
   lancamento,
   categorias,
+  clientes,
+  fornecedores,
 }: {
   open: boolean;
   onClose: () => void;
   lancamento: LancamentoRow | null;
   categorias: Categoria[];
+  clientes: Cliente[];
+  fornecedores: Fornecedor[];
 }) {
   const formRef = useRef<HTMLFormElement>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -90,6 +94,38 @@ export function LancamentoModal({
             {categorias.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.nome}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-xs text-[var(--text-dim)] mb-1">Cliente (opcional)</label>
+          <select
+            name="cliente_id"
+            defaultValue={lancamento?.cliente_id ?? ""}
+            className="w-full px-3 py-2 rounded bg-[var(--surface-2)] border border-[var(--border)]"
+          >
+            <option value="">Nenhum</option>
+            {clientes.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nome}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-xs text-[var(--text-dim)] mb-1">Fornecedor (opcional)</label>
+          <select
+            name="fornecedor_id"
+            defaultValue={lancamento?.fornecedor_id ?? ""}
+            className="w-full px-3 py-2 rounded bg-[var(--surface-2)] border border-[var(--border)]"
+          >
+            <option value="">Nenhum</option>
+            {fornecedores.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.nome}
               </option>
             ))}
           </select>
