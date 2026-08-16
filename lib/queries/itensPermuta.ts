@@ -34,6 +34,29 @@ export async function buscarItemPermutaPorPagamento(pagamentoId: string) {
   return data as ItemPermuta | null;
 }
 
+// Pega os itens de permuta que nasceram de algum pagamento DESTE lançamento
+// (não confundir com reverterItemPermutaPorLancamento, que trata o caso
+// inverso: este lançamento sendo a venda de um item de OUTRA origem).
+export async function buscarItensPermutaPorLancamentoOrigem(lancamentoId: string) {
+  const supabase = await createClient();
+  const { data: pagamentos, error: pagamentosError } = await supabase
+    .from("pagamentos")
+    .select("id")
+    .eq("lancamento_id", lancamentoId);
+  if (pagamentosError) throw pagamentosError;
+  if (!pagamentos || pagamentos.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from("itens_permuta")
+    .select("*")
+    .in(
+      "pagamento_id",
+      pagamentos.map((p) => p.id)
+    );
+  if (error) throw error;
+  return data as ItemPermuta[];
+}
+
 export async function criarItemPermuta(input: {
   pagamento_id: string;
   descricao: string;

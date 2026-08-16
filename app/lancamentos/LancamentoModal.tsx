@@ -333,8 +333,8 @@ export function LancamentoModal({
                 try {
                   await excluirLancamentoAction(lancamento.id);
                   onClose();
-                } catch {
-                  setErro("Não foi possível excluir o lançamento. Tente novamente.");
+                } catch (e) {
+                  setErro(e instanceof Error ? e.message : "Não foi possível excluir o lançamento. Tente novamente.");
                 }
               }}
               className="text-[var(--accent-red)] text-sm font-semibold"

@@ -7,7 +7,10 @@ import {
   atualizarLancamento,
   excluirLancamento,
 } from "@/lib/queries/lancamentos";
-import { reverterItemPermutaPorLancamento } from "@/lib/queries/itensPermuta";
+import {
+  reverterItemPermutaPorLancamento,
+  buscarItensPermutaPorLancamentoOrigem,
+} from "@/lib/queries/itensPermuta";
 import { registrarPagamentoComPermuta } from "./permutaPagamento";
 import { round2 } from "@/lib/calculations";
 import { revalidarPaginasFinanceiras } from "./revalidate";
@@ -83,6 +86,18 @@ export async function salvarLancamentoAction(formData: FormData) {
 }
 
 export async function excluirLancamentoAction(id: string) {
+  // Se algum pagamento deste lançamento gerou um item de permuta que já foi
+  // revendido (ou baixado), apagar o lançamento apagaria o item em cascata
+  // e deixaria a venda dele órfã, sem nenhum item por trás. Mesma trava que
+  // estornarPagamentoAction já tem no nível de pagamento.
+  const itensDeOrigem = await buscarItensPermutaPorLancamentoOrigem(id);
+  const itemJaMovimentado = itensDeOrigem.find((item) => item.status !== "em_estoque");
+  if (itemJaMovimentado) {
+    throw new Error(
+      "Este lançamento gerou um item de permuta que já foi vendido (ou baixado). Reverta isso antes de excluir o lançamento."
+    );
+  }
+
   // Se este lançamento veio de uma venda de permuta, devolve o item pro
   // estoque antes de apagar - senão ele fica preso em "vendido" pra sempre,
   // sem lançamento nenhum por trás.
