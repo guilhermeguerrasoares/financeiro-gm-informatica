@@ -57,17 +57,6 @@ export async function buscarItensPermutaPorLancamentoOrigem(lancamentoId: string
   return data as ItemPermuta[];
 }
 
-export async function criarItemPermuta(input: {
-  pagamento_id: string;
-  descricao: string;
-  valor_estimado: number | null;
-  status: string;
-}) {
-  const supabase = await createClient();
-  const { error } = await supabase.from("itens_permuta").insert(input);
-  if (error) throw error;
-}
-
 // Chama a função vender_item_permuta (supabase/migrations/0008), que cria o
 // lançamento + pagamento e dá baixa no item numa única transação no banco -
 // evita deixar lançamento órfão ou vender o mesmo item duas vezes.
