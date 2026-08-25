@@ -15,7 +15,7 @@ export default async function FornecedoresPage() {
     const doFornecedor = lancamentos.filter((l) => l.fornecedor_id === f.id);
     const total = doFornecedor.reduce((acc, l) => acc + l.valor, 0);
     const falta = doFornecedor.reduce((acc, l) => acc + saldo(l, pagamentos), 0);
-    return { fornecedor: f, total, falta };
+    return { fornecedor: f, total, falta, qtdLancamentos: doFornecedor.length };
   });
 
   return (

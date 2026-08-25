@@ -20,3 +20,15 @@ export async function criarFornecedor(input: Omit<Fornecedor, "id">) {
   const { error } = await supabase.from("fornecedores").insert(input);
   if (error) throw error;
 }
+
+export async function atualizarFornecedor(id: string, input: Partial<Omit<Fornecedor, "id">>) {
+  const supabase = await createClient();
+  const { error } = await supabase.from("fornecedores").update(input).eq("id", id);
+  if (error) throw error;
+}
+
+export async function excluirFornecedor(id: string) {
+  const supabase = await createClient();
+  const { error } = await supabase.from("fornecedores").delete().eq("id", id);
+  if (error) throw error;
+}
