@@ -1,9 +1,9 @@
 "use client";
 
 import { Fragment, useMemo, useState } from "react";
-import { Pencil, Paperclip, ChevronRight, ChevronDown, Trash2 } from "lucide-react";
+import { Pencil, Paperclip, ChevronRight, ChevronDown, Trash2, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { StatusTag } from "@/components/StatusTag";
-import { saldo, status as calcStatus, totalPago } from "@/lib/calculations";
+import { saldo, status as calcStatus, totalPago, type StatusLancamento } from "@/lib/calculations";
 import { money, formatDataBR, hoje } from "@/lib/format";
 import type { LancamentoRow, PagamentoRow, Categoria, Cliente, Fornecedor } from "@/lib/types";
 import { LancamentoModal } from "./LancamentoModal";
@@ -127,13 +127,31 @@ export function LancamentosTable({
   const [editando, setEditando] = useState<LancamentoRow | null>(null);
   const [pagando, setPagando] = useState<{ lancamento: LancamentoRow; falta: number } | null>(null);
   const [expandido, setExpandido] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<"data" | "situacao" | null>(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const hojeStr = hoje();
 
   const nomeCategoria = (id: string | null) =>
     categorias.find((c) => c.id === id)?.nome ?? "—";
 
+  const toggleSort = (campo: "data" | "situacao") => {
+    if (sortBy === campo) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(campo);
+      setSortDir("asc");
+    }
+  };
+
+  const SITUACAO_ORDEM: Record<StatusLancamento, number> = {
+    atrasado: 0,
+    aberto: 1,
+    parcial: 2,
+    quitado: 3,
+  };
+
   const linhas = useMemo(() => {
-    return lancamentos
+    const filtradas = lancamentos
       .map((l) => ({
         lancamento: l,
         status: calcStatus(l, pagamentos, hojeStr),
@@ -149,7 +167,19 @@ export function LancamentosTable({
       .filter((row) =>
         busca ? row.lancamento.descricao.toLowerCase().includes(busca.toLowerCase()) : true
       );
-  }, [lancamentos, pagamentos, filtroStatus, busca, hojeStr]);
+
+    if (!sortBy) return filtradas;
+
+    const sinal = sortDir === "asc" ? 1 : -1;
+    return [...filtradas].sort((a, b) => {
+      if (sortBy === "data") {
+        const dataA = a.lancamento.vencimento ?? "";
+        const dataB = b.lancamento.vencimento ?? "";
+        return dataA.localeCompare(dataB) * sinal;
+      }
+      return (SITUACAO_ORDEM[a.status] - SITUACAO_ORDEM[b.status]) * sinal;
+    });
+  }, [lancamentos, pagamentos, filtroStatus, busca, hojeStr, sortBy, sortDir]);
 
   return (
     <div>
@@ -188,10 +218,44 @@ export function LancamentosTable({
         <thead>
           <tr className="text-left text-[var(--text-dim)] text-xs uppercase border-b border-[var(--border)]">
             <th className="py-2 w-10">Anexos</th>
-            <th>Vencimento</th>
+            <th>
+              <button
+                type="button"
+                onClick={() => toggleSort("data")}
+                className="flex items-center gap-1 uppercase text-xs font-semibold text-[var(--text-dim)] hover:text-[var(--text)]"
+              >
+                Vencimento
+                {sortBy === "data" ? (
+                  sortDir === "asc" ? (
+                    <ArrowUp size={12} />
+                  ) : (
+                    <ArrowDown size={12} />
+                  )
+                ) : (
+                  <ArrowUpDown size={12} className="opacity-40" />
+                )}
+              </button>
+            </th>
             <th>Descrição</th>
             <th>Categoria</th>
-            <th>Situação</th>
+            <th>
+              <button
+                type="button"
+                onClick={() => toggleSort("situacao")}
+                className="flex items-center gap-1 uppercase text-xs font-semibold text-[var(--text-dim)] hover:text-[var(--text)]"
+              >
+                Situação
+                {sortBy === "situacao" ? (
+                  sortDir === "asc" ? (
+                    <ArrowUp size={12} />
+                  ) : (
+                    <ArrowDown size={12} />
+                  )
+                ) : (
+                  <ArrowUpDown size={12} className="opacity-40" />
+                )}
+              </button>
+            </th>
             <th className="text-right">Valor</th>
             <th className="text-right">Falta</th>
             <th className="text-right">Ações</th>
