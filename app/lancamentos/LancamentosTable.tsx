@@ -5,10 +5,15 @@ import { Pencil, Paperclip, ChevronRight, ChevronDown, Trash2, ArrowUp, ArrowDow
 import { StatusTag } from "@/components/StatusTag";
 import { saldo, status as calcStatus, totalPago, type StatusLancamento } from "@/lib/calculations";
 import { money, formatDataBR, hoje } from "@/lib/format";
-import type { LancamentoRow, PagamentoRow, Categoria, Cliente, Fornecedor } from "@/lib/types";
+import type { LancamentoRow, PagamentoRow, Categoria, Cliente, Fornecedor, ContaFinanceira } from "@/lib/types";
 import { LancamentoModal } from "./LancamentoModal";
 import { PagamentoModal } from "./PagamentoModal";
-import { getComprovanteUrlAction, anexarComprovanteAction, estornarPagamentoAction } from "./pagamentoActions";
+import {
+  getComprovanteUrlAction,
+  anexarComprovanteAction,
+  estornarPagamentoAction,
+  alterarContaPagamentoAction,
+} from "./pagamentoActions";
 import { uploadComprovante } from "./uploadComprovante";
 import { FORMAS_PAGAMENTO_LABEL } from "@/lib/formasPagamento";
 
@@ -73,6 +78,58 @@ function AnexarComprovanteButton({ pagamentoId, lancamentoId }: { pagamentoId: s
   );
 }
 
+// Troca a conta de um pagamento já registrado, direto na linha. Salva na
+// hora: é um campo só, e obrigar um "salvar" para uma escolha única seria
+// atrito à toa. Pagamento em permuta não passa por conta nenhuma, então ali
+// o campo nem aparece.
+function ContaPagamentoSelect({
+  pagamentoId,
+  contaAtual,
+  contas,
+  ehPermuta,
+}: {
+  pagamentoId: string;
+  contaAtual: string | null;
+  contas: ContaFinanceira[];
+  ehPermuta: boolean;
+}) {
+  const [salvando, setSalvando] = useState(false);
+
+  if (ehPermuta) {
+    return <span className="text-[var(--text-dim)]" title="Permuta não passa por conta: é item de estoque.">—</span>;
+  }
+
+  return (
+    <select
+      value={contaAtual ?? ""}
+      disabled={salvando}
+      onClick={(e) => e.stopPropagation()}
+      onChange={async (e) => {
+        const novaConta = e.target.value || null;
+        setSalvando(true);
+        try {
+          await alterarContaPagamentoAction(pagamentoId, novaConta);
+        } catch {
+          alert("Não foi possível alterar a conta deste pagamento.");
+        } finally {
+          setSalvando(false);
+        }
+      }}
+      className={`text-xs px-1.5 py-0.5 rounded border border-[var(--border)] bg-[var(--surface)] disabled:opacity-50 ${
+        contaAtual ? "" : "text-[var(--accent-amber)]"
+      }`}
+      title={contaAtual ? "Conta onde este dinheiro entrou/saiu" : "Sem conta: este pagamento não entra em nenhum saldo"}
+    >
+      <option value="">Sem conta</option>
+      {contas.map((c) => (
+        <option key={c.id} value={c.id}>
+          {c.nome}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 function EstornarPagamentoButton({ pagamentoId }: { pagamentoId: string }) {
   const [enviando, setEnviando] = useState(false);
 
@@ -112,12 +169,14 @@ export function LancamentosTable({
   categorias,
   clientes,
   fornecedores,
+  contas,
 }: {
   lancamentos: LancamentoRow[];
   pagamentos: PagamentoRow[];
   categorias: Categoria[];
   clientes: Cliente[];
   fornecedores: Fornecedor[];
+  contas: ContaFinanceira[];
 }) {
   const [filtroStatus, setFiltroStatus] = useState<"pendentes" | "atrasado" | "quitado" | "todos">(
     "pendentes"
@@ -351,6 +410,14 @@ export function LancamentosTable({
                               <td className="py-1 text-[var(--text-dim)]">
                                 {p.forma_pagamento ? FORMAS_PAGAMENTO_LABEL[p.forma_pagamento] ?? p.forma_pagamento : "—"}
                               </td>
+                              <td className="py-1">
+                                <ContaPagamentoSelect
+                                  pagamentoId={p.id}
+                                  contaAtual={p.conta_financeira_id}
+                                  contas={contas}
+                                  ehPermuta={p.forma_pagamento === "permuta"}
+                                />
+                              </td>
                               <td className="py-1 text-right">{money(p.valor)}</td>
                               <td className="py-1 text-right w-32">
                                 {p.comprovante_url ? (
@@ -389,6 +456,7 @@ export function LancamentosTable({
         categorias={categorias}
         clientes={clientes}
         fornecedores={fornecedores}
+        contas={contas}
       />
 
       <PagamentoModal
@@ -397,6 +465,7 @@ export function LancamentosTable({
         onClose={() => setPagando(null)}
         lancamento={pagando?.lancamento ?? null}
         falta={pagando?.falta ?? 0}
+        contas={contas}
       />
     </div>
   );

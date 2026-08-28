@@ -6,22 +6,25 @@ import { ModalError } from "@/components/ModalError";
 import { registrarPagamentoAction } from "./pagamentoActions";
 import { uploadComprovante } from "./uploadComprovante";
 import { PermutaItemFields } from "./PermutaItemFields";
+import { ContaSelect } from "@/components/ContaSelect";
 import { valorLiquido } from "@/lib/calculations";
 import { money, hoje } from "@/lib/format";
 import { FORMAS_PAGAMENTO } from "@/lib/formasPagamento";
 import { usePermutaSplit } from "./usePermutaSplit";
-import type { LancamentoRow } from "@/lib/types";
+import type { LancamentoRow, ContaFinanceira } from "@/lib/types";
 
 export function PagamentoModal({
   open,
   onClose,
   lancamento,
   falta,
+  contas,
 }: {
   open: boolean;
   onClose: () => void;
   lancamento: LancamentoRow | null;
   falta: number;
+  contas: ContaFinanceira[];
 }) {
   const [valor, setValor] = useState(falta);
   const [taxa, setTaxa] = useState<number | "">("");
@@ -95,7 +98,9 @@ export function PagamentoModal({
           />
         </div>
 
-        <div className="col-span-2">
+        <ContaSelect contas={contas} fundo="surface-2" obrigatoria={valor > 0.004} />
+
+        <div>
           <label className="block text-xs text-[var(--text-dim)] mb-1">
             Forma de pagamento{incluiuPermuta ? " (parte em dinheiro/outro)" : ""}
           </label>

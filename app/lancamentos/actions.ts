@@ -47,7 +47,6 @@ export async function salvarLancamentoAction(formData: FormData) {
     categoria_id: (formData.get("categoria_id") as string) || null,
     cliente_id: (formData.get("cliente_id") as string) || null,
     fornecedor_id: (formData.get("fornecedor_id") as string) || null,
-    conta_financeira_id: (formData.get("conta_financeira_id") as string) || null,
     equipamento_id: null,
     valor: Number(formData.get("valor")),
     custo: formData.get("custo") ? Number(formData.get("custo")) : null,
@@ -77,6 +76,7 @@ export async function salvarLancamentoAction(formData: FormData) {
       comprovanteUrl: comprovantePath,
       permutaDescricao,
       valorPermuta: Number(formData.get("permuta_valor")) || 0,
+      contaFinanceiraId: (formData.get("conta_financeira_id") as string) || null,
     });
     if (criouPermuta) revalidatePath("/permutas");
   }

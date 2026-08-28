@@ -65,6 +65,7 @@ export type PagamentoRow = {
   taxa: number | null;
   valor_liquido: number;
   forma_pagamento: string | null;
+  conta_financeira_id: string | null;
   data_pagamento: string;
   comprovante_url: string | null;
   observacao: string | null;

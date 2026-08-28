@@ -9,8 +9,8 @@ const lancamentos: LancamentoRow[] = [
 ];
 
 const pagamentos: PagamentoRow[] = [
-  { id: "p1", lancamento_id: "l1", valor: 200, taxa: null, valor_liquido: 200, forma_pagamento: "pix", data_pagamento: "2026-06-01", comprovante_url: null, observacao: null },
-  { id: "p2", lancamento_id: "l2", valor: 300, taxa: null, valor_liquido: 300, forma_pagamento: "pix", data_pagamento: "2026-07-01", comprovante_url: null, observacao: null },
+  { id: "p1", lancamento_id: "l1", valor: 200, taxa: null, valor_liquido: 200, forma_pagamento: "pix", conta_financeira_id: null, data_pagamento: "2026-06-01", comprovante_url: null, observacao: null },
+  { id: "p2", lancamento_id: "l2", valor: 300, taxa: null, valor_liquido: 300, forma_pagamento: "pix", conta_financeira_id: null, data_pagamento: "2026-07-01", comprovante_url: null, observacao: null },
 ];
 
 describe("metricasCliente", () => {

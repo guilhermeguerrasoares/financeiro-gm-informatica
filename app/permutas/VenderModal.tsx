@@ -7,6 +7,7 @@ import { venderItemPermutaAction } from "./actions";
 import { hoje } from "@/lib/format";
 import { FORMAS_PAGAMENTO } from "@/lib/formasPagamento";
 import type { ItemPermuta } from "@/lib/queries/itensPermuta";
+import { ContaSelect } from "@/components/ContaSelect";
 import type { Categoria, ContaFinanceira } from "@/lib/types";
 
 export function VenderModal({
@@ -87,21 +88,7 @@ export function VenderModal({
             </select>
           </div>
 
-          <div>
-            <label className="block text-xs text-[var(--text-dim)] mb-1">Conta financeira</label>
-            <select
-              name="conta_financeira_id"
-              defaultValue=""
-              className="w-full px-3 py-2 rounded bg-[var(--surface-2)] border border-[var(--border)]"
-            >
-              <option value="">Selecione</option>
-              {contas.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.nome}
-                </option>
-              ))}
-            </select>
-          </div>
+          <ContaSelect contas={contas} fundo="surface-2" />
 
           <div className="col-span-2">
             <label className="block text-xs text-[var(--text-dim)] mb-1">Categoria (opcional)</label>

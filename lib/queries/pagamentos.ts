@@ -18,6 +18,18 @@ export async function estornarPagamento(id: string) {
   if (error) throw error;
 }
 
+// Trocar a conta de um pagamento já registrado. Sem isso, corrigir uma conta
+// escolhida por engano exigiria estornar e lançar de novo - e estornar apaga
+// junto o item de permuta vinculado, quando existe.
+export async function atualizarContaPagamento(id: string, contaFinanceiraId: string | null) {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("pagamentos")
+    .update({ conta_financeira_id: contaFinanceiraId })
+    .eq("id", id);
+  if (error) throw error;
+}
+
 export async function atualizarComprovantePagamento(id: string, path: string) {
   const supabase = await createClient();
   const { error } = await supabase.from("pagamentos").update({ comprovante_url: path }).eq("id", id);
@@ -40,6 +52,7 @@ export async function registrarPagamentoComPermutaTransacional(input: {
   comprovante_url: string | null;
   permuta_descricao: string;
   valor_permuta: number;
+  conta_financeira_id: string | null;
 }) {
   const supabase = await createClient();
   const { error } = await supabase.rpc("registrar_pagamento_com_permuta", {
@@ -51,6 +64,7 @@ export async function registrarPagamentoComPermutaTransacional(input: {
     p_comprovante_url: input.comprovante_url,
     p_permuta_descricao: input.permuta_descricao,
     p_valor_permuta: input.valor_permuta,
+    p_conta_financeira_id: input.conta_financeira_id,
   });
   if (error) throw error;
 }

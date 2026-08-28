@@ -4,7 +4,8 @@ import { listarClientes } from "./clientes";
 import { listarContasFinanceiras } from "./contasFinanceiras";
 import { listarMetas } from "./metas";
 import { listarItensPermuta, type ItemPermuta } from "./itensPermuta";
-import { saldo, status as calcStatus, totalPago, lucroPermuta } from "@/lib/calculations";
+import { saldo, status as calcStatus, totalPago, lucroPermuta, round2 } from "@/lib/calculations";
+import { saldosPorConta } from "@/lib/saldos";
 import { calcularProgressoMetas } from "@/lib/metas-calc";
 import { addDias, diffDias } from "@/lib/format";
 import type { LancamentoRow, PagamentoRow } from "@/lib/types";
@@ -79,17 +80,9 @@ export async function dadosDashboard(periodo: PeriodoDashboard, periodoFluxo: Pe
   // Pagamento em permuta não é dinheiro entrando na conta - é item de
   // estoque - por isso fica de fora daqui (só entra quando o item é
   // revendido, via itensPermutaVendidosPeriodo/vender_item_permuta).
-  const saldoPorConta = contas.map((c) => {
-    const daConta = lancamentos.filter((l) => l.conta_financeira_id === c.id);
-    const movimentado = daConta.reduce((a, l) => {
-      const pagoAteFim = pagamentos
-        .filter((p) => p.lancamento_id === l.id && p.data_pagamento <= fim && p.forma_pagamento !== "permuta")
-        .reduce((soma, p) => soma + p.valor, 0);
-      return a + (l.tipo === "receita" ? pagoAteFim : -pagoAteFim);
-    }, 0);
-    return { conta: c, saldo: c.saldo_inicial + movimentado };
-  });
-  const saldoConsolidado = saldoPorConta.reduce((acc, s) => acc + s.saldo, 0);
+  const saldos = saldosPorConta(contas, lancamentos, pagamentos, fim);
+  const saldoPorConta = contas.map((c) => ({ conta: c, saldo: saldos[c.id] ?? c.saldo_inicial }));
+  const saldoConsolidado = round2(saldoPorConta.reduce((acc, s) => acc + s.saldo, 0));
 
   // Classificação é um estado atual do cliente, não histórico - não faz
   // sentido variar por período selecionado.

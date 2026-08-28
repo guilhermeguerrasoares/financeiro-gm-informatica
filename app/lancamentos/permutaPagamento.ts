@@ -16,6 +16,7 @@ export async function registrarPagamentoComPermuta(input: {
   comprovanteUrl: string | null;
   permutaDescricao: string;
   valorPermuta: number;
+  contaFinanceiraId: string | null;
 }) {
   const valorCaixa = round2(input.valorCaixa);
   const valorPermuta = input.permutaDescricao ? round2(input.valorPermuta) : 0;
@@ -33,6 +34,7 @@ export async function registrarPagamentoComPermuta(input: {
     comprovante_url: input.comprovanteUrl,
     permuta_descricao: input.permutaDescricao,
     valor_permuta: valorPermuta,
+    conta_financeira_id: input.contaFinanceiraId,
   });
 
   return { criouPermuta: valorPermuta > 0.004 && !!input.permutaDescricao };

@@ -4,12 +4,13 @@ import { useRef, useState } from "react";
 import { Modal } from "@/components/Modal";
 import { ModalError } from "@/components/ModalError";
 import { PermutaItemFields } from "./PermutaItemFields";
+import { ContaSelect } from "@/components/ContaSelect";
 import { salvarLancamentoAction, excluirLancamentoAction } from "./actions";
 import { valorLiquido } from "@/lib/calculations";
 import { money, hoje } from "@/lib/format";
 import { FORMAS_PAGAMENTO } from "@/lib/formasPagamento";
 import { usePermutaSplit } from "./usePermutaSplit";
-import type { Categoria, Cliente, Fornecedor, LancamentoRow } from "@/lib/types";
+import type { Categoria, Cliente, Fornecedor, LancamentoRow, ContaFinanceira } from "@/lib/types";
 
 export function LancamentoModal({
   open,
@@ -18,6 +19,7 @@ export function LancamentoModal({
   categorias,
   clientes,
   fornecedores,
+  contas,
 }: {
   open: boolean;
   onClose: () => void;
@@ -25,6 +27,7 @@ export function LancamentoModal({
   categorias: Categoria[];
   clientes: Cliente[];
   fornecedores: Fornecedor[];
+  contas: ContaFinanceira[];
 }) {
   const formRef = useRef<HTMLFormElement>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -222,7 +225,9 @@ export function LancamentoModal({
               />
             </div>
 
-            <div className="col-span-2">
+            <ContaSelect contas={contas} obrigatoria={valorPago > 0.004} />
+
+            <div>
               <label className="block text-xs text-[var(--text-dim)] mb-1">
                 Forma de pagamento{incluiuPermuta ? " (parte em dinheiro/outro)" : ""}
               </label>

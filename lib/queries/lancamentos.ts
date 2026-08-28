@@ -12,8 +12,11 @@ export async function listarLancamentos() {
   return data as LancamentoRow[];
 }
 
+// `conta_financeira_id` fica de fora de propósito: a conta é escolhida na
+// baixa (pagamentos.conta_financeira_id), não no lançamento. Incluí-la aqui
+// era o que zerava a conta de um lançamento a cada edição.
 export async function criarLancamento(
-  input: Omit<LancamentoRow, "id">
+  input: Omit<LancamentoRow, "id" | "conta_financeira_id">
 ) {
   const supabase = await createClient();
   const { data, error } = await supabase

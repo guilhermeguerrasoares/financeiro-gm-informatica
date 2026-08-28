@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { estornarPagamento, atualizarComprovantePagamento } from "@/lib/queries/pagamentos";
+import { estornarPagamento, atualizarComprovantePagamento, atualizarContaPagamento } from "@/lib/queries/pagamentos";
 import { buscarItemPermutaPorPagamento } from "@/lib/queries/itensPermuta";
 import { registrarPagamentoComPermuta } from "./permutaPagamento";
 import { revalidarPaginasFinanceiras } from "./revalidate";
@@ -21,6 +21,7 @@ export async function registrarPagamentoAction(formData: FormData) {
     comprovanteUrl: (formData.get("comprovante_path") as string) || null,
     permutaDescricao: (formData.get("permuta_descricao") as string) || "",
     valorPermuta: Number(formData.get("permuta_valor")) || 0,
+    contaFinanceiraId: (formData.get("conta_financeira_id") as string) || null,
   });
 
   revalidarPaginasFinanceiras();
@@ -41,6 +42,11 @@ export async function estornarPagamentoAction(id: string) {
   await estornarPagamento(id);
   revalidarPaginasFinanceiras();
   revalidatePath("/permutas");
+}
+
+export async function alterarContaPagamentoAction(pagamentoId: string, contaFinanceiraId: string | null) {
+  await atualizarContaPagamento(pagamentoId, contaFinanceiraId);
+  revalidarPaginasFinanceiras();
 }
 
 export async function anexarComprovanteAction(pagamentoId: string, path: string) {

@@ -30,6 +30,7 @@ function pagamento(overrides: Partial<PagamentoRow>): PagamentoRow {
     taxa: null,
     valor_liquido: 100,
     forma_pagamento: null,
+    conta_financeira_id: null,
     data_pagamento: "2026-08-10",
     comprovante_url: null,
     observacao: null,

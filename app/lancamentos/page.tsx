@@ -3,15 +3,17 @@ import { listarPagamentos } from "@/lib/queries/pagamentos";
 import { listarCategorias } from "@/lib/queries/categorias";
 import { listarClientes } from "@/lib/queries/clientes";
 import { listarFornecedores } from "@/lib/queries/fornecedores";
+import { listarContasFinanceiras } from "@/lib/queries/contasFinanceiras";
 import { LancamentosTable } from "./LancamentosTable";
 
 export default async function LancamentosPage() {
-  const [lancamentos, pagamentos, categorias, clientes, fornecedores] = await Promise.all([
+  const [lancamentos, pagamentos, categorias, clientes, fornecedores, contas] = await Promise.all([
     listarLancamentos(),
     listarPagamentos(),
     listarCategorias(),
     listarClientes(),
     listarFornecedores(),
+    listarContasFinanceiras(),
   ]);
 
   return (
@@ -23,6 +25,7 @@ export default async function LancamentosPage() {
         categorias={categorias}
         clientes={clientes}
         fornecedores={fornecedores}
+        contas={contas}
       />
     </div>
   );
