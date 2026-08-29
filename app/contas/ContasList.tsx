@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ContaModal } from "./ContaModal";
+import { AjusteSaldoModal } from "./AjusteSaldoModal";
 import { money } from "@/lib/format";
 import type { ContaFinanceira } from "@/lib/types";
 
@@ -15,6 +16,7 @@ export function ContasList({
   saldoConsolidado: number;
 }) {
   const [modalOpen, setModalOpen] = useState(false);
+  const [ajustando, setAjustando] = useState<ContaFinanceira | null>(null);
 
   return (
     <div>
@@ -36,13 +38,29 @@ export function ContasList({
           <div key={c.id} className="bg-[var(--surface)] border border-[var(--border)] rounded-lg p-4">
             <h3 className="font-semibold mb-1">{c.nome}</h3>
             <p className="text-xs text-[var(--text-dim)] mb-3 uppercase">{c.tipo}</p>
-            <div className="text-lg font-semibold">{money(saldoPorConta[c.id] ?? 0)}</div>
+            <div className="flex items-end justify-between gap-2">
+              <div className="text-lg font-semibold">{money(saldoPorConta[c.id] ?? 0)}</div>
+              <button
+                type="button"
+                onClick={() => setAjustando(c)}
+                className="text-xs text-[var(--accent-blue)] underline"
+              >
+                Ajustar saldo
+              </button>
+            </div>
           </div>
         ))}
         {contas.length === 0 && <p className="text-[var(--text-dim)]">Nenhuma conta cadastrada ainda.</p>}
       </div>
 
       <ContaModal open={modalOpen} onClose={() => setModalOpen(false)} />
+
+      <AjusteSaldoModal
+        key={ajustando?.id ?? "fechado"}
+        conta={ajustando}
+        saldoSistema={ajustando ? saldoPorConta[ajustando.id] ?? 0 : 0}
+        onClose={() => setAjustando(null)}
+      />
     </div>
   );
 }

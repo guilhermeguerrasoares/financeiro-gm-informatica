@@ -45,6 +45,9 @@ export type LancamentoRow = {
   competencia: string | null;
   recorrencia: string | null;
   observacao: string | null;
+  // Lançamento de conciliação de conta: entra no saldo, fica fora de
+  // faturamento, metas, DRE e fluxo (ver migração 0013).
+  ajuste_saldo: boolean;
 };
 
 export type Meta = {

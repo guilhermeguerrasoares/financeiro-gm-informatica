@@ -17,7 +17,7 @@ export function agruparPorFrenteNegocio(
   const acumulado = new Map<string, { receita: number; custo: number }>();
 
   for (const l of lancamentos) {
-    if (l.tipo !== "receita") continue;
+    if (l.tipo !== "receita" || l.ajuste_saldo) continue;
     const frente = l.categoria_id ? frenteDaCategoria.get(l.categoria_id) : null;
     if (!frente) continue;
 
@@ -42,6 +42,9 @@ export type LinhaCategoria = {
   vencido: number;
 };
 
+// Ajuste de conciliação fica de fora dos dois agrupamentos: ele corrige o
+// saldo de uma conta, não representa venda nem despesa operacional, então no
+// DRE seria ruído puro.
 // Despesas only: receita already has its own breakdown in
 // agruparPorFrenteNegocio, so mixing tipos into one "total" per categoria
 // here would let e.g. a despesa filed under a receita category net against
@@ -57,7 +60,7 @@ export function agruparPorCategoria(
   const acumulado = new Map<string, { total: number; pago: number; vencido: number }>();
 
   for (const l of lancamentos) {
-    if (l.tipo !== "despesa") continue;
+    if (l.tipo !== "despesa" || l.ajuste_saldo) continue;
     const nome = l.categoria_id ? nomeCategoria.get(l.categoria_id) ?? "Outros" : "Outros";
     const atual = acumulado.get(nome) ?? { total: 0, pago: 0, vencido: 0 };
     atual.total += l.valor;

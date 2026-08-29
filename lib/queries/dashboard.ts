@@ -60,7 +60,9 @@ export async function dadosDashboard(periodo: PeriodoDashboard, periodoFluxo: Pe
   ]);
 
   const { inicio, fim } = periodo;
-  const despesas = lancamentos.filter((l) => l.tipo === "despesa");
+  // Ajuste de conciliação nasce já quitado e não é conta a pagar - fora do
+  // card de atenção junto com o resto dos relatórios.
+  const despesas = lancamentos.filter((l) => l.tipo === "despesa" && !l.ajuste_saldo);
 
   // "Atrasado" e "vence em 7 dias" são sempre relativos ao fim do período
   // selecionado - selecionar um mês passado mostra a situação como estava
@@ -122,7 +124,10 @@ export async function dadosDashboard(periodo: PeriodoDashboard, periodoFluxo: Pe
       const lancamento = lancamentos.find((l) => l.id === pagamento.lancamento_id);
       return lancamento ? { pagamento, lancamento } : null;
     })
-    .filter((x): x is PagamentoComLancamento => x !== null);
+    // Ajuste de conciliação move o saldo da conta, mas não é entrada nem
+    // saída de verdade: contá-lo aqui distorceria justamente o resultado do
+    // período que ele deveria deixar confiável.
+    .filter((x): x is PagamentoComLancamento => x !== null && !x.lancamento.ajuste_saldo);
 
   const totalEntradasPeriodo = pagamentosPeriodo
     .filter((p) => p.lancamento.tipo === "receita")
@@ -138,7 +143,11 @@ export async function dadosDashboard(periodo: PeriodoDashboard, periodoFluxo: Pe
   // Fluxo diário: cobre o intervalo completo (mês inteiro, mesmo além de
   // hoje) para mostrar previsão, diferente dos KPIs acima que travam em `fim`.
   const lancamentosFluxo = lancamentos.filter(
-    (l) => l.vencimento && l.vencimento >= periodoFluxo.inicio && l.vencimento <= periodoFluxo.fim
+    (l) =>
+      l.vencimento &&
+      l.vencimento >= periodoFluxo.inicio &&
+      l.vencimento <= periodoFluxo.fim &&
+      !l.ajuste_saldo
   );
   const idsFluxo = new Set(lancamentosFluxo.map((l) => l.id));
   const pagamentosFluxo = pagamentos.filter((p) => idsFluxo.has(p.lancamento_id));

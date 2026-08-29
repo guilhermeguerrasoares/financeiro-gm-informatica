@@ -13,7 +13,11 @@ export type ProgressoMeta = {
 };
 
 function somaFaturamento(lancamentos: LancamentoRow[], pagamentos: PagamentoRow[], inicio: string, fim: string): number {
-  const idsReceita = new Set(lancamentos.filter((l) => l.tipo === "receita").map((l) => l.id));
+  // Ajuste de conciliação mexe no saldo da conta, mas não é venda. Contá-lo
+  // aqui inflaria o denominador de toda meta percentual.
+  const idsReceita = new Set(
+    lancamentos.filter((l) => l.tipo === "receita" && !l.ajuste_saldo).map((l) => l.id)
+  );
   return round2(
     pagamentos
       .filter((p) => idsReceita.has(p.lancamento_id) && p.data_pagamento >= inicio && p.data_pagamento <= fim)

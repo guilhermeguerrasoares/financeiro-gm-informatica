@@ -15,8 +15,10 @@ export async function listarLancamentos() {
 // `conta_financeira_id` fica de fora de propósito: a conta é escolhida na
 // baixa (pagamentos.conta_financeira_id), não no lançamento. Incluí-la aqui
 // era o que zerava a conta de um lançamento a cada edição.
+// `ajuste_saldo` também: quem marca é a RPC registrar_ajuste_saldo, e um
+// lançamento criado à mão nunca é uma conciliação.
 export async function criarLancamento(
-  input: Omit<LancamentoRow, "id" | "conta_financeira_id">
+  input: Omit<LancamentoRow, "id" | "conta_financeira_id" | "ajuste_saldo">
 ) {
   const supabase = await createClient();
   const { data, error } = await supabase

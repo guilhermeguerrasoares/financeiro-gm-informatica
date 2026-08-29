@@ -18,6 +18,7 @@ function lancamento(overrides: Partial<LancamentoRow>): LancamentoRow {
     competencia: null,
     recorrencia: null,
     observacao: null,
+    ajuste_saldo: false,
     ...overrides,
   };
 }
@@ -125,5 +126,43 @@ describe("calcularProgressoMetas", () => {
     const p = pagamento({ id: "p1", lancamento_id: "l1", valor: 999, data_pagamento: "2026-07-15" });
     const r = calcularProgressoMetas([meta({ metrica: "faturamento", unidade: "valor", valor_alvo: 1000 })], [l], [p], periodo);
     expect(r[0].atualValor).toBe(0);
+  });
+});
+
+// Um ajuste de conciliação move o saldo da conta, mas não é venda. Se ele
+// entrasse no faturamento, toda meta percentual passaria a ser calculada
+// sobre um denominador inflado - e o ajuste existe justamente para deixar os
+// números confiáveis.
+describe("ajuste de saldo", () => {
+  const metaFaturamento: Meta = {
+    id: "m1",
+    nome: "Faturamento do mês",
+    tipo: "meta",
+    metrica: "faturamento",
+    categoria_id: null,
+    unidade: "valor",
+    valor_alvo: 1000,
+    ativo: true,
+  };
+
+  it("não conta ajuste de saldo no faturamento", () => {
+    const lancamentos = [
+      lancamento({ id: "venda", tipo: "receita" }),
+      lancamento({ id: "ajuste", tipo: "receita", valor: 5000, ajuste_saldo: true }),
+    ];
+    const pagamentos = [
+      pagamento({ id: "p-venda", lancamento_id: "venda", valor: 100 }),
+      pagamento({ id: "p-ajuste", lancamento_id: "ajuste", valor: 5000 }),
+    ];
+
+    const [progresso] = calcularProgressoMetas(
+      [metaFaturamento],
+      lancamentos,
+      pagamentos,
+      { inicio: "2026-08-01", fim: "2026-08-31" }
+    );
+
+    expect(progresso.faturamento).toBe(100);
+    expect(progresso.atualValor).toBe(100);
   });
 });

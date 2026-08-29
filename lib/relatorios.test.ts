@@ -9,9 +9,9 @@ const categorias: Categoria[] = [
 ];
 
 const lancamentos: LancamentoRow[] = [
-  { id: "l1", descricao: "Venda 1", tipo: "receita", categoria_id: "cat-pecas", cliente_id: null, fornecedor_id: null, conta_financeira_id: null, equipamento_id: null, valor: 100, custo: 40, vencimento: null, competencia: null, recorrencia: null, observacao: null },
-  { id: "l2", descricao: "Venda 2", tipo: "receita", categoria_id: "cat-pc", cliente_id: null, fornecedor_id: null, conta_financeira_id: null, equipamento_id: null, valor: 500, custo: 300, vencimento: null, competencia: null, recorrencia: null, observacao: null },
-  { id: "l3", descricao: "Compra de peças", tipo: "despesa", categoria_id: "cat-fornecedores", cliente_id: null, fornecedor_id: null, conta_financeira_id: null, equipamento_id: null, valor: 200, custo: null, vencimento: "2020-01-01", competencia: null, recorrencia: null, observacao: null },
+  { id: "l1", descricao: "Venda 1", tipo: "receita", categoria_id: "cat-pecas", cliente_id: null, fornecedor_id: null, conta_financeira_id: null, equipamento_id: null, valor: 100, custo: 40, vencimento: null, competencia: null, recorrencia: null, observacao: null, ajuste_saldo: false },
+  { id: "l2", descricao: "Venda 2", tipo: "receita", categoria_id: "cat-pc", cliente_id: null, fornecedor_id: null, conta_financeira_id: null, equipamento_id: null, valor: 500, custo: 300, vencimento: null, competencia: null, recorrencia: null, observacao: null, ajuste_saldo: false },
+  { id: "l3", descricao: "Compra de peças", tipo: "despesa", categoria_id: "cat-fornecedores", cliente_id: null, fornecedor_id: null, conta_financeira_id: null, equipamento_id: null, valor: 200, custo: null, vencimento: "2020-01-01", competencia: null, recorrencia: null, observacao: null, ajuste_saldo: false },
 ];
 
 const pagamentos: PagamentoRow[] = [];
@@ -38,5 +38,26 @@ describe("agruparPorCategoria", () => {
   it("only includes despesa lancamentos, ignoring receita ones", () => {
     const resultado = agruparPorCategoria(lancamentos, categorias, pagamentos, "2026-08-05");
     expect(resultado).toEqual([{ categoria: "Fornecedores", total: 200, pago: 0, vencido: 200 }]);
+  });
+});
+
+// O ajuste de conciliação corrige o saldo da conta; ele não é uma despesa
+// operacional nem uma venda, então não pode aparecer no DRE.
+describe("ajuste de saldo", () => {
+  const comAjuste: LancamentoRow[] = [
+    ...lancamentos,
+    { id: "aj-desp", descricao: "Ajuste de saldo", tipo: "despesa", categoria_id: null, cliente_id: null, fornecedor_id: null, conta_financeira_id: null, equipamento_id: null, valor: 900, custo: null, vencimento: "2026-08-01", competencia: null, recorrencia: null, observacao: null, ajuste_saldo: true },
+    { id: "aj-rec", descricao: "Ajuste de saldo", tipo: "receita", categoria_id: "cat-pecas", cliente_id: null, fornecedor_id: null, conta_financeira_id: null, equipamento_id: null, valor: 700, custo: null, vencimento: "2026-08-01", competencia: null, recorrencia: null, observacao: null, ajuste_saldo: true },
+  ];
+
+  it("não cria linha de despesa para ajuste de saldo", () => {
+    const linhas = agruparPorCategoria(comAjuste, categorias, pagamentos, "2026-08-20");
+    expect(linhas.find((l) => l.categoria === "Outros")).toBeUndefined();
+    expect(linhas.reduce((acc, l) => acc + l.total, 0)).toBe(200);
+  });
+
+  it("não soma ajuste de saldo na receita por frente de negócio", () => {
+    const linhas = agruparPorFrenteNegocio(comAjuste, categorias);
+    expect(linhas.find((l) => l.frente === "pecas_acessorios")?.receita).toBe(100);
   });
 });

@@ -362,7 +362,19 @@ export function LancamentosTable({
                     )}
                   </td>
                   <td className="py-2">{formatDataBR(lancamento.vencimento)}</td>
-                  <td className="font-medium">{lancamento.descricao}</td>
+                  <td className="font-medium">
+                    {lancamento.descricao}
+                    {/* Marca visível para o ajuste não ser lido como venda ou
+                        despesa de verdade ao bater o extrato. */}
+                    {lancamento.ajuste_saldo && (
+                      <span
+                        className="ml-2 px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wide border border-[var(--border)] text-[var(--text-dim)]"
+                        title="Conciliação de conta: entra no saldo, fora do faturamento e do DRE."
+                      >
+                        ajuste
+                      </span>
+                    )}
+                  </td>
                   <td className="text-[var(--text-dim)]">{nomeCategoria(lancamento.categoria_id)}</td>
                   <td>
                     <StatusTag status={status} />
