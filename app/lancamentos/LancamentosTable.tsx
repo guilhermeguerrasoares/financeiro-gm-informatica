@@ -163,6 +163,21 @@ function EstornarPagamentoButton({ pagamentoId }: { pagamentoId: string }) {
   );
 }
 
+// Entrada = receita, Saída = despesa. O rótulo segue o nome da aba, que é o
+// vocabulário do dia a dia da loja, não o do banco.
+function TipoTag({ tipo }: { tipo: LancamentoRow["tipo"] }) {
+  const ehEntrada = tipo === "receita";
+  return (
+    <span
+      className={`text-xs font-semibold px-2 py-1 rounded-full ${
+        ehEntrada ? "bg-emerald-950 text-[var(--accent-green)]" : "bg-red-950 text-[var(--accent-red)]"
+      }`}
+    >
+      {ehEntrada ? "Entrada" : "Saída"}
+    </span>
+  );
+}
+
 export function LancamentosTable({
   lancamentos,
   pagamentos,
@@ -181,6 +196,9 @@ export function LancamentosTable({
   const [filtroStatus, setFiltroStatus] = useState<"pendentes" | "atrasado" | "quitado" | "todos">(
     "pendentes"
   );
+  const [filtroTipo, setFiltroTipo] = useState<"todos" | "receita" | "despesa">("todos");
+  const [dataDe, setDataDe] = useState("");
+  const [dataAte, setDataAte] = useState("");
   const [busca, setBusca] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [editando, setEditando] = useState<LancamentoRow | null>(null);
@@ -223,6 +241,18 @@ export function LancamentosTable({
         if (filtroStatus === "quitado") return row.status === "quitado";
         return true;
       })
+      .filter((row) => (filtroTipo === "todos" ? true : row.lancamento.tipo === filtroTipo))
+      // Datas em "YYYY-MM-DD" comparam bem como string. Lançamento sem
+      // vencimento fica de fora assim que um limite é informado: não há data
+      // para dizer se ele cabe no período.
+      .filter((row) => {
+        if (!dataDe && !dataAte) return true;
+        const venc = row.lancamento.vencimento;
+        if (!venc) return false;
+        if (dataDe && venc < dataDe) return false;
+        if (dataAte && venc > dataAte) return false;
+        return true;
+      })
       .filter((row) =>
         busca ? row.lancamento.descricao.toLowerCase().includes(busca.toLowerCase()) : true
       );
@@ -238,7 +268,7 @@ export function LancamentosTable({
       }
       return (SITUACAO_ORDEM[a.status] - SITUACAO_ORDEM[b.status]) * sinal;
     });
-  }, [lancamentos, pagamentos, filtroStatus, busca, hojeStr, sortBy, sortDir]);
+  }, [lancamentos, pagamentos, filtroStatus, filtroTipo, dataDe, dataAte, busca, hojeStr, sortBy, sortDir]);
 
   return (
     <div>
@@ -273,6 +303,50 @@ export function LancamentosTable({
         </button>
       </div>
 
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        {(["todos", "receita", "despesa"] as const).map((t) => (
+          <button
+            key={t}
+            onClick={() => setFiltroTipo(t)}
+            aria-pressed={filtroTipo === t}
+            className={`px-3 py-1.5 rounded-full text-sm font-semibold border border-[var(--border)] ${
+              filtroTipo === t ? "bg-[var(--accent-blue)] text-[var(--bg)]" : "text-[var(--text-dim)]"
+            }`}
+          >
+            {t === "todos" ? "Entradas e saídas" : t === "receita" ? "Só entradas" : "Só saídas"}
+          </button>
+        ))}
+
+        <span className="ml-2 text-xs uppercase text-[var(--text-dim)]">Vencimento de</span>
+        <input
+          type="date"
+          aria-label="Vencimento a partir de"
+          value={dataDe}
+          onChange={(e) => setDataDe(e.target.value)}
+          className="px-3 py-1.5 rounded bg-[var(--surface-2)] border border-[var(--border)] text-sm"
+        />
+        <span className="text-xs uppercase text-[var(--text-dim)]">até</span>
+        <input
+          type="date"
+          aria-label="Vencimento até"
+          value={dataAte}
+          onChange={(e) => setDataAte(e.target.value)}
+          className="px-3 py-1.5 rounded bg-[var(--surface-2)] border border-[var(--border)] text-sm"
+        />
+        {(dataDe || dataAte) && (
+          <button
+            type="button"
+            onClick={() => {
+              setDataDe("");
+              setDataAte("");
+            }}
+            className="px-2 py-1.5 text-xs text-[var(--text-dim)] underline"
+          >
+            Limpar datas
+          </button>
+        )}
+      </div>
+
       <table className="w-full text-sm border-collapse">
         <thead>
           <tr className="text-left text-[var(--text-dim)] text-xs uppercase border-b border-[var(--border)]">
@@ -295,6 +369,7 @@ export function LancamentosTable({
                 )}
               </button>
             </th>
+            <th>Tipo</th>
             <th>Descrição</th>
             <th>Categoria</th>
             <th>
@@ -362,6 +437,9 @@ export function LancamentosTable({
                     )}
                   </td>
                   <td className="py-2">{formatDataBR(lancamento.vencimento)}</td>
+                  <td>
+                    <TipoTag tipo={lancamento.tipo} />
+                  </td>
                   <td className="font-medium">
                     {lancamento.descricao}
                     {/* Marca visível para o ajuste não ser lido como venda ou
@@ -413,7 +491,7 @@ export function LancamentosTable({
                 {estaExpandido && (
                   <tr key={`${lancamento.id}-pagamentos`} className="border-b border-[var(--border)] bg-[var(--surface-2)]">
                     <td></td>
-                    <td colSpan={7} className="py-2 pr-4">
+                    <td colSpan={8} className="py-2 pr-4">
                       <table className="w-full text-xs">
                         <tbody>
                           {pagamentosDoLancamento.map((p) => (
@@ -453,7 +531,7 @@ export function LancamentosTable({
           })}
           {linhas.length === 0 && (
             <tr>
-              <td colSpan={8} className="py-8 text-center text-[var(--text-dim)]">
+              <td colSpan={9} className="py-8 text-center text-[var(--text-dim)]">
                 Nenhum lançamento com esses filtros.
               </td>
             </tr>
