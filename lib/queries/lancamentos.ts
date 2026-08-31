@@ -6,7 +6,11 @@ export async function listarLancamentos() {
   const { data, error } = await supabase
     .from("lancamentos")
     .select("*")
-    .order("vencimento", { ascending: true, nullsFirst: false });
+    .order("vencimento", { ascending: true, nullsFirst: false })
+    // Desempate: sem ele, a ordem entre lançamentos do mesmo vencimento fica
+    // por conta do banco e muda sem aviso. O que foi digitado por último
+    // aparece no topo do seu dia, que é onde quem acabou de lançar procura.
+    .order("created_at", { ascending: false });
 
   if (error) throw error;
   return data as LancamentoRow[];
@@ -18,7 +22,7 @@ export async function listarLancamentos() {
 // `ajuste_saldo` também: quem marca é a RPC registrar_ajuste_saldo, e um
 // lançamento criado à mão nunca é uma conciliação.
 export async function criarLancamento(
-  input: Omit<LancamentoRow, "id" | "conta_financeira_id" | "ajuste_saldo">
+  input: Omit<LancamentoRow, "id" | "conta_financeira_id" | "ajuste_saldo" | "created_at">
 ) {
   const supabase = await createClient();
   const { data, error } = await supabase

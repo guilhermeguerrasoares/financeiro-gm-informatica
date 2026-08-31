@@ -63,3 +63,61 @@ export function margem(lancamento: Lancamento): number | null {
 export function lucroPermuta(item: { valor_venda: number | null; valor_estimado: number | null }): number {
   return round2((item.valor_venda ?? 0) - (item.valor_estimado ?? 0));
 }
+
+// Filtro de período por data ISO "YYYY-MM-DD": nesse formato a ordem
+// lexicográfica é a ordem cronológica, então comparar as strings direto
+// evita converter para Date - que é justamente onde datas puras costumam
+// escorregar um dia por fuso horário.
+//
+// Ambos os limites são inclusivos e independentes: informar só um dos lados
+// deixa o outro em aberto. Sem data nenhuma, nada é filtrado.
+export function dentroDoPeriodo(
+  data: string | null,
+  de: string,
+  ate: string
+): boolean {
+  if (!de && !ate) return true;
+  // Sem data não há como dizer se cabe no período; fica de fora assim que
+  // algum limite é informado.
+  if (!data) return false;
+  if (de && data < de) return false;
+  if (ate && data > ate) return false;
+  return true;
+}
+
+export const SITUACAO_ORDEM: Record<StatusLancamento, number> = {
+  atrasado: 0,
+  aberto: 1,
+  parcial: 2,
+  quitado: 3,
+};
+
+// Desempate de ordenação: dois lançamentos com o mesmo vencimento (ou a
+// mesma situação) precisam de uma ordem estável entre si, senão quem decide
+// é o banco e ela muda sem aviso. Vence o digitado por último, que é o que
+// quem acabou de lançar procura na tela.
+export function compararPorRegistro(
+  a: { created_at: string },
+  b: { created_at: string }
+): number {
+  return b.created_at.localeCompare(a.created_at);
+}
+
+// Ordena as linhas da tabela de lançamentos. `campo` null significa a ordem
+// que veio do banco (vencimento crescente), preservada por ser um sort
+// estável; o desempate por data de registro já vem de lá.
+export function ordenarLinhas<
+  T extends { lancamento: { vencimento: string | null; created_at: string }; status: StatusLancamento }
+>(linhas: T[], campo: "data" | "situacao" | null, direcao: "asc" | "desc"): T[] {
+  if (!campo) return linhas;
+
+  const sinal = direcao === "asc" ? 1 : -1;
+  return [...linhas].sort((a, b) => {
+    const primario =
+      campo === "data"
+        ? (a.lancamento.vencimento ?? "").localeCompare(b.lancamento.vencimento ?? "")
+        : SITUACAO_ORDEM[a.status] - SITUACAO_ORDEM[b.status];
+    if (primario !== 0) return primario * sinal;
+    return compararPorRegistro(a.lancamento, b.lancamento);
+  });
+}

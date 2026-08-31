@@ -48,6 +48,10 @@ export type LancamentoRow = {
   // Lançamento de conciliação de conta: entra no saldo, fica fora de
   // faturamento, metas, DRE e fluxo (ver migração 0013).
   ajuste_saldo: boolean;
+  // Quando a linha foi digitada no sistema - diferente do vencimento, que é
+  // a data do movimento. Serve de desempate na ordenação: dois lançamentos
+  // do mesmo dia precisam de uma ordem estável entre si.
+  created_at: string;
 };
 
 export type Meta = {

@@ -3,7 +3,7 @@
 import { Fragment, useMemo, useState } from "react";
 import { Pencil, Paperclip, ChevronRight, ChevronDown, Trash2, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { StatusTag } from "@/components/StatusTag";
-import { saldo, status as calcStatus, totalPago, type StatusLancamento } from "@/lib/calculations";
+import { saldo, status as calcStatus, totalPago, dentroDoPeriodo, ordenarLinhas } from "@/lib/calculations";
 import { money, formatDataBR, hoje } from "@/lib/format";
 import type { LancamentoRow, PagamentoRow, Categoria, Cliente, Fornecedor, ContaFinanceira } from "@/lib/types";
 import { LancamentoModal } from "./LancamentoModal";
@@ -220,13 +220,6 @@ export function LancamentosTable({
     }
   };
 
-  const SITUACAO_ORDEM: Record<StatusLancamento, number> = {
-    atrasado: 0,
-    aberto: 1,
-    parcial: 2,
-    quitado: 3,
-  };
-
   const linhas = useMemo(() => {
     const filtradas = lancamentos
       .map((l) => ({
@@ -242,32 +235,12 @@ export function LancamentosTable({
         return true;
       })
       .filter((row) => (filtroTipo === "todos" ? true : row.lancamento.tipo === filtroTipo))
-      // Datas em "YYYY-MM-DD" comparam bem como string. Lançamento sem
-      // vencimento fica de fora assim que um limite é informado: não há data
-      // para dizer se ele cabe no período.
-      .filter((row) => {
-        if (!dataDe && !dataAte) return true;
-        const venc = row.lancamento.vencimento;
-        if (!venc) return false;
-        if (dataDe && venc < dataDe) return false;
-        if (dataAte && venc > dataAte) return false;
-        return true;
-      })
+      .filter((row) => dentroDoPeriodo(row.lancamento.vencimento, dataDe, dataAte))
       .filter((row) =>
         busca ? row.lancamento.descricao.toLowerCase().includes(busca.toLowerCase()) : true
       );
 
-    if (!sortBy) return filtradas;
-
-    const sinal = sortDir === "asc" ? 1 : -1;
-    return [...filtradas].sort((a, b) => {
-      if (sortBy === "data") {
-        const dataA = a.lancamento.vencimento ?? "";
-        const dataB = b.lancamento.vencimento ?? "";
-        return dataA.localeCompare(dataB) * sinal;
-      }
-      return (SITUACAO_ORDEM[a.status] - SITUACAO_ORDEM[b.status]) * sinal;
-    });
+    return ordenarLinhas(filtradas, sortBy, sortDir);
   }, [lancamentos, pagamentos, filtroStatus, filtroTipo, dataDe, dataAte, busca, hojeStr, sortBy, sortDir]);
 
   return (
