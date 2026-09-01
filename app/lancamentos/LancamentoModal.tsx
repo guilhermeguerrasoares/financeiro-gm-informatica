@@ -11,6 +11,7 @@ import { money, hoje } from "@/lib/format";
 import { FORMAS_PAGAMENTO } from "@/lib/formasPagamento";
 import { usePermutaSplit } from "./usePermutaSplit";
 import { RepeticaoFields, type Repeticao } from "./RepeticaoFields";
+import { AlcanceSerieDialog } from "./AlcanceSerieDialog";
 import type { Categoria, Cliente, Fornecedor, LancamentoRow, ContaFinanceira } from "@/lib/types";
 
 export function LancamentoModal({
@@ -37,6 +38,11 @@ export function LancamentoModal({
   const [valorLancamento, setValorLancamento] = useState(lancamento?.valor ?? 0);
   const [vencimento, setVencimento] = useState(lancamento?.vencimento ?? "");
   const [repeticao, setRepeticao] = useState<Repeticao>("nenhuma");
+  const [perguntandoAlcance, setPerguntandoAlcance] = useState<"editar" | "excluir" | null>(null);
+  // Segura o formulário já preenchido enquanto o diálogo de alcance está na
+  // tela: a escolha do alcance vem depois do submit, mas antes de gravar.
+  const [dadosPendentes, setDadosPendentes] = useState<FormData | null>(null);
+  const ehSerie = Boolean(lancamento?.serie_id);
   const [pago, setPago] = useState(false);
   const [valorPago, setValorPago] = useState(lancamento?.valor ?? 0);
   const [taxa, setTaxa] = useState<number | "">("");
@@ -46,22 +52,35 @@ export function LancamentoModal({
     valorLancamento
   );
 
+  async function salvar(formData: FormData, alcance: "este" | "proximos" | "todos") {
+    setErro(null);
+    setEnviando(true);
+    try {
+      formData.set("alcance", alcance);
+      const { aviso } = await salvarLancamentoAction(formData);
+      if (aviso) alert(aviso);
+      onClose();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Não foi possível salvar o lançamento. Tente novamente.");
+    } finally {
+      setEnviando(false);
+      setPerguntandoAlcance(null);
+    }
+  }
+
   return (
     <Modal open={open} onClose={onClose} title={lancamento ? "Editar lançamento" : "Novo lançamento"}>
       <form
         ref={formRef}
         action={async (formData) => {
-          setErro(null);
-          setEnviando(true);
-          try {
-            const { aviso } = await salvarLancamentoAction(formData);
-            if (aviso) alert(aviso);
-            onClose();
-          } catch (e) {
-            setErro(e instanceof Error ? e.message : "Não foi possível salvar o lançamento. Tente novamente.");
-          } finally {
-            setEnviando(false);
+          // Numa série, o alcance decide o que a edição atinge - por isso a
+          // pergunta vem antes de gravar, não depois.
+          if (ehSerie) {
+            setDadosPendentes(formData);
+            setPerguntandoAlcance("editar");
+            return;
           }
+          await salvar(formData, "este");
         }}
         className="grid grid-cols-2 gap-3"
       >
@@ -351,6 +370,10 @@ export function LancamentoModal({
             <button
               type="button"
               onClick={async () => {
+                if (ehSerie) {
+                  setPerguntandoAlcance("excluir");
+                  return;
+                }
                 if (!confirm(`Excluir "${lancamento.descricao}"? Essa ação não pode ser desfeita.`)) return;
                 try {
                   await excluirLancamentoAction(lancamento.id);
@@ -380,6 +403,32 @@ export function LancamentoModal({
           </div>
         </div>
       </form>
+
+      {perguntandoAlcance && lancamento && (
+        <AlcanceSerieDialog
+          acao={perguntandoAlcance}
+          onCancelar={() => {
+            setPerguntandoAlcance(null);
+            setDadosPendentes(null);
+          }}
+          onEscolher={async (alcance) => {
+            if (perguntandoAlcance === "editar") {
+              if (dadosPendentes) await salvar(dadosPendentes, alcance);
+              setDadosPendentes(null);
+              return;
+            }
+            try {
+              const aviso = await excluirLancamentoAction(lancamento.id, alcance);
+              if (aviso) alert(aviso);
+              onClose();
+            } catch (e) {
+              setErro(e instanceof Error ? e.message : "Não foi possível excluir o lançamento. Tente novamente.");
+            } finally {
+              setPerguntandoAlcance(null);
+            }
+          }}
+        />
+      )}
     </Modal>
   );
 }
