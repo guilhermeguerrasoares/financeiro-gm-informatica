@@ -15,6 +15,7 @@ import {
   LogOut,
   Tags,
   Target,
+  KeyRound,
 } from "lucide-react";
 import { logout } from "@/app/login/actions";
 
@@ -75,6 +76,17 @@ export function Sidebar({ userEmail }: { userEmail: string | null }) {
             <p className="px-3 text-xs text-[var(--text-dim)] truncate mb-1" title={userEmail}>
               {userEmail}
             </p>
+            <Link
+              href="/senha"
+              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm transition-colors ${
+                pathname === "/senha"
+                  ? "bg-white/5 text-[var(--text)]"
+                  : "text-[var(--text-dim)] hover:bg-white/5 hover:text-[var(--text)]"
+              }`}
+            >
+              <KeyRound size={16} strokeWidth={2} className="shrink-0" />
+              Alterar senha
+            </Link>
             <form action={logout}>
               <button
                 type="submit"
