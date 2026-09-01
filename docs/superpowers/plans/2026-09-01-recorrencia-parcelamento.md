@@ -396,9 +396,13 @@ alter table lancamentos
   add column serie_id uuid references series_lancamentos(id) on delete set null,
   add column parcela_numero int;
 
--- Coluna morta desde a migração 0001: sempre gravada como null, nunca lida.
--- Quem cumpre esse papel agora é `serie_id`.
-alter table lancamentos drop column recorrencia;
+-- A coluna `recorrencia` (migração 0001) fica onde está, de propósito. O
+-- código nunca a escreveu, mas 14 lançamentos importados do sistema antigo
+-- trazem ali a marcação de quais contas da loja são fixas. Derrubá-la
+-- apagaria justamente a informação que este recurso existe para tratar.
+-- Quem passa a cumprir esse papel daqui em diante é `serie_id`; a coluna
+-- antiga fica congelada como registro, até essas contas serem convertidas
+-- em séries de verdade, uma a uma.
 
 create index idx_lancamentos_serie on lancamentos(serie_id) where serie_id is not null;
 
@@ -645,9 +649,13 @@ Rodar no SQL Editor:
 ```sql
 select column_name from information_schema.columns
 where table_name = 'lancamentos' and column_name in ('serie_id', 'parcela_numero', 'recorrencia');
+
+select count(recorrencia) as marcacoes_preservadas from lancamentos;
 ```
 
-Expected: exatamente duas linhas — `serie_id` e `parcela_numero`. `recorrencia` não aparece.
+Expected: três linhas na primeira consulta (`serie_id`, `parcela_numero` e
+`recorrencia`, que continua existindo), e `marcacoes_preservadas = 14` na
+segunda — nenhuma marcação do sistema antigo pode ter se perdido.
 
 - [ ] **Step 4: Commit**
 
@@ -677,9 +685,10 @@ git commit -m "feat: tabela e RPCs de séries de lançamentos"
   - `atualizarSerie(lancamentoId, alcance, campos): Promise<{ alterados: number; pulados_pagos: number }>`
   - `excluirSerie(lancamentoId, alcance): Promise<{ excluidos: number; pulados_pagos: number }>`
 
-- [ ] **Step 1: Trocar o campo em `lib/types.ts`**
+- [ ] **Step 1: Acrescentar os campos em `lib/types.ts`**
 
-Em `LancamentoRow`, remover a linha `recorrencia: string | null;` e pôr no lugar:
+Em `LancamentoRow`, manter `recorrencia: string | null;` (a coluna continua no
+banco, com a marcação importada do sistema antigo) e acrescentar logo abaixo:
 
 ```ts
   // Série a que este lançamento pertence (parcelamento ou conta fixa), e a
@@ -716,10 +725,11 @@ Expected: FAIL — erros em `lib/ltv.test.ts`, `lib/relatorios.test.ts` e `lib/m
 
 - [ ] **Step 3: Corrigir as fixtures dos testes**
 
-Nos três arquivos, trocar cada `recorrencia: null,` por:
+Nos três arquivos, acrescentar os dois campos novos logo depois de cada
+`recorrencia: null,` (que permanece):
 
 ```ts
-serie_id: null, parcela_numero: null,
+recorrencia: null, serie_id: null, parcela_numero: null,
 ```
 
 - [ ] **Step 4: Criar `lib/queries/series.ts`**
@@ -846,10 +856,18 @@ Em `lib/queries/lancamentos.ts`, o comentário acima de `criarLancamento` já ex
 // `serie_id`/`parcela_numero` idem: quem preenche é criar_serie_lancamentos.
 // Um lançamento avulso nunca pertence a uma série, e uma edição normal não
 // pode arrancar uma parcela da série dela.
+// `recorrencia` é a marcação herdada do sistema antigo, congelada: o
+// formulário não a escreve, para não apagá-la a cada edição.
 export async function criarLancamento(
   input: Omit<
     LancamentoRow,
-    "id" | "conta_financeira_id" | "ajuste_saldo" | "serie_id" | "parcela_numero" | "created_at"
+    | "id"
+    | "conta_financeira_id"
+    | "ajuste_saldo"
+    | "recorrencia"
+    | "serie_id"
+    | "parcela_numero"
+    | "created_at"
   >
 ) {
 ```
@@ -924,7 +942,7 @@ export async function reabastecerSeriesFixasAction(): Promise<number> {
 }
 ```
 
-- [ ] **Step 2: Tirar `recorrencia` do input**
+- [ ] **Step 2: Tirar `recorrencia` do input (correção de bug)**
 
 Em `app/lancamentos/actions.ts`, dentro do objeto `input` de `salvarLancamentoAction`,
 apagar a linha:
@@ -933,8 +951,15 @@ apagar a linha:
     recorrencia: null,
 ```
 
-A coluna deixou de existir na Task 2. Mantê-la aqui faria o Supabase recusar
-todo insert e todo update de lançamento com "column does not exist".
+O mesmo `input` alimenta `criarLancamento` e `atualizarLancamento`. Como está,
+toda edição de lançamento grava `recorrencia = null` — ou seja, abrir a Energia
+e mudar qualquer coisa apagaria a marcação `mensal` que veio do sistema antigo.
+Tirando a chave daqui, um lançamento novo continua nascendo com null (o default
+da coluna) e uma edição deixa o valor existente em paz.
+
+E acrescentar `recorrencia` ao `Omit` de `criarLancamento`, em
+`lib/queries/lancamentos.ts`, junto das outras colunas que o formulário não
+controla.
 
 - [ ] **Step 3: Ensinar `salvarLancamentoAction` a criar séries e a propagar edições**
 
