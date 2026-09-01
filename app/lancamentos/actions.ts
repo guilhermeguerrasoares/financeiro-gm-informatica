@@ -117,6 +117,19 @@ export async function salvarLancamentoAction(formData: FormData) {
     if (valorCaixa <= 0.004 && valorPermuta <= 0.004) {
       throw new Error("Informe um valor pago (em dinheiro/outro e/ou em permuta) maior que zero.");
     }
+
+    // Mesmo motivo do comentário acima: um comprovante inválido não pode
+    // ser descoberto só depois de criarLancamento. validarComprovante é
+    // pura (só olha type/size), então dá pra rodar aqui sem custo de I/O.
+    // Um arquivo de 0 byte é tratado como "nenhum arquivo", igual ao que
+    // uploadComprovanteServidor já faz mais abaixo.
+    const arquivoComprovante = formData.get("comprovante") as File | null;
+    if (arquivoComprovante && arquivoComprovante.size > 0) {
+      const erroComprovante = validarComprovante(arquivoComprovante);
+      if (erroComprovante) {
+        return { lancamento: null, aviso: null, erro: erroComprovante };
+      }
+    }
   }
 
   const input = {
@@ -165,9 +178,10 @@ export async function salvarLancamentoAction(formData: FormData) {
     const comprovante = arquivo
       ? await uploadComprovanteServidor(arquivo, lancamento.id)
       : { path: null, erro: null };
-    // O lançamento já foi criado acima; um comprovante inválido não desfaz
-    // isso, só impede o registro do pagamento. Quem chama decide o que
-    // mostrar ao usuário a partir do `erro`.
+    // Nesse fluxo (registrandoPagamento) o comprovante já foi validado antes
+    // de criarLancamento, então este `erro` não deveria mais disparar aqui -
+    // fica como cinto e suspensório: é a validação própria de
+    // uploadComprovanteServidor, mantida mesmo virando inalcançável.
     if (comprovante.erro) {
       revalidarPaginasFinanceiras();
       return { lancamento, aviso, erro: comprovante.erro };
