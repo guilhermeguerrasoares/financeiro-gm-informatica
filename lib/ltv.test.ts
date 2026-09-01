@@ -3,9 +3,9 @@ import { metricasCliente } from "./ltv";
 import type { LancamentoRow, PagamentoRow } from "./types";
 
 const lancamentos: LancamentoRow[] = [
-  { id: "l1", descricao: "Conserto 1", tipo: "receita", categoria_id: null, cliente_id: "c1", fornecedor_id: null, conta_financeira_id: null, equipamento_id: null, valor: 200, custo: null, vencimento: "2026-06-01", competencia: "2026-06", recorrencia: null, observacao: null, ajuste_saldo: false, created_at: "2026-01-01T00:00:00Z" },
-  { id: "l2", descricao: "Conserto 2", tipo: "receita", categoria_id: null, cliente_id: "c1", fornecedor_id: null, conta_financeira_id: null, equipamento_id: null, valor: 300, custo: null, vencimento: "2026-07-01", competencia: "2026-07", recorrencia: null, observacao: null, ajuste_saldo: false, created_at: "2026-01-01T00:00:00Z" },
-  { id: "l3", descricao: "Peça avulsa", tipo: "despesa", categoria_id: null, cliente_id: null, fornecedor_id: null, conta_financeira_id: null, equipamento_id: null, valor: 50, custo: null, vencimento: null, competencia: null, recorrencia: null, observacao: null, ajuste_saldo: false, created_at: "2026-01-01T00:00:00Z" },
+  { id: "l1", descricao: "Conserto 1", tipo: "receita", categoria_id: null, cliente_id: "c1", fornecedor_id: null, conta_financeira_id: null, equipamento_id: null, valor: 200, custo: null, vencimento: "2026-06-01", competencia: "2026-06", recorrencia: null, serie_id: null, parcela_numero: null, observacao: null, ajuste_saldo: false, created_at: "2026-01-01T00:00:00Z" },
+  { id: "l2", descricao: "Conserto 2", tipo: "receita", categoria_id: null, cliente_id: "c1", fornecedor_id: null, conta_financeira_id: null, equipamento_id: null, valor: 300, custo: null, vencimento: "2026-07-01", competencia: "2026-07", recorrencia: null, serie_id: null, parcela_numero: null, observacao: null, ajuste_saldo: false, created_at: "2026-01-01T00:00:00Z" },
+  { id: "l3", descricao: "Peça avulsa", tipo: "despesa", categoria_id: null, cliente_id: null, fornecedor_id: null, conta_financeira_id: null, equipamento_id: null, valor: 50, custo: null, vencimento: null, competencia: null, recorrencia: null, serie_id: null, parcela_numero: null, observacao: null, ajuste_saldo: false, created_at: "2026-01-01T00:00:00Z" },
 ];
 
 const pagamentos: PagamentoRow[] = [
