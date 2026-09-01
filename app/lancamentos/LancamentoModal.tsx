@@ -10,6 +10,7 @@ import { valorLiquido } from "@/lib/calculations";
 import { money, hoje } from "@/lib/format";
 import { FORMAS_PAGAMENTO } from "@/lib/formasPagamento";
 import { usePermutaSplit } from "./usePermutaSplit";
+import { RepeticaoFields, type Repeticao } from "./RepeticaoFields";
 import type { Categoria, Cliente, Fornecedor, LancamentoRow, ContaFinanceira } from "@/lib/types";
 
 export function LancamentoModal({
@@ -34,6 +35,8 @@ export function LancamentoModal({
   const [enviando, setEnviando] = useState(false);
 
   const [valorLancamento, setValorLancamento] = useState(lancamento?.valor ?? 0);
+  const [vencimento, setVencimento] = useState(lancamento?.vencimento ?? "");
+  const [repeticao, setRepeticao] = useState<Repeticao>("nenhuma");
   const [pago, setPago] = useState(false);
   const [valorPago, setValorPago] = useState(lancamento?.valor ?? 0);
   const [taxa, setTaxa] = useState<number | "">("");
@@ -51,7 +54,8 @@ export function LancamentoModal({
           setErro(null);
           setEnviando(true);
           try {
-            await salvarLancamentoAction(formData);
+            const { aviso } = await salvarLancamentoAction(formData);
+            if (aviso) alert(aviso);
             onClose();
           } catch (e) {
             setErro(e instanceof Error ? e.message : "Não foi possível salvar o lançamento. Tente novamente.");
@@ -139,7 +143,9 @@ export function LancamentoModal({
           <input
             type="date"
             name="vencimento"
-            defaultValue={lancamento?.vencimento ?? ""}
+            value={vencimento}
+            onChange={(e) => setVencimento(e.target.value)}
+            required={repeticao !== "nenhuma"}
             className="w-full px-3 py-2 rounded bg-[var(--surface-2)] border border-[var(--border)]"
           />
         </div>
@@ -178,6 +184,17 @@ export function LancamentoModal({
         </div>
 
         {!lancamento && (
+          <RepeticaoFields
+            valor={valorLancamento}
+            vencimento={vencimento}
+            onRepeticaoChange={setRepeticao}
+          />
+        )}
+
+        {/* "Já foi pago?" some quando há repetição: numa compra de 3x, "já foi
+            pago" não diz qual parcela foi quitada. A baixa é feita parcela a
+            parcela, pelo botão "Pagar" da tabela. */}
+        {!lancamento && repeticao === "nenhuma" && (
           <div className="col-span-2 flex items-center gap-2 pt-1">
             <input
               id="ja-pago"
@@ -196,7 +213,7 @@ export function LancamentoModal({
           </div>
         )}
 
-        {!lancamento && pago && (
+        {!lancamento && repeticao === "nenhuma" && pago && (
           <div className="col-span-2 border border-[var(--border)] rounded p-3 bg-[var(--surface-2)] grid grid-cols-2 gap-3">
             <p className="col-span-2 text-xs text-[var(--text-dim)] uppercase tracking-wide">Pagamento</p>
 
