@@ -16,11 +16,14 @@ import { round2 } from "@/lib/calculations";
 import { montarOcorrencias, type Frequencia, type ModoValor } from "@/lib/series";
 import { criarSerie, atualizarSerie, excluirSerie } from "@/lib/queries/series";
 import { revalidarPaginasFinanceiras } from "./revalidate";
+import { validarComprovante, montarCaminhoComprovante } from "@/lib/comprovantes";
 
 async function uploadComprovanteServidor(arquivo: File, lancamentoId: string): Promise<string | null> {
   if (arquivo.size === 0) return null;
+  const erro = validarComprovante(arquivo);
+  if (erro) throw new Error(erro);
   const supabase = await createClient();
-  const path = `${lancamentoId}/${Date.now()}-${arquivo.name}`;
+  const path = montarCaminhoComprovante(lancamentoId, arquivo.name, Date.now());
   const { error } = await supabase.storage.from("comprovantes").upload(path, arquivo);
   if (error) throw error;
   return path;
