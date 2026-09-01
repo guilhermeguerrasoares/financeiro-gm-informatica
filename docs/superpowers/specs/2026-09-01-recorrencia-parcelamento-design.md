@@ -7,8 +7,13 @@
 
 Hoje não há como registrar uma conta que se repete. A tabela `lancamentos` tem
 uma coluna `recorrencia text` desde a migração inicial (`0001_schema.sql`), mas
-ela nunca foi usada: `app/lancamentos/actions.ts` grava `recorrencia: null` em
-todo lançamento, e nenhuma tela lê ou escreve o campo. É uma coluna morta.
+nenhuma tela lê ou escreve o campo, e `app/lancamentos/actions.ts` grava
+`recorrencia: null` em todo lançamento que salva.
+
+A coluna **não está vazia**, porém: 14 lançamentos vieram da importação do
+sistema antigo já marcados (11 `mensal` — Aluguel, Energia, Folha, Água,
+Contabilidade... — e 3 `semanal`). Ou seja, a marcação existe como dado, só não
+como funcionalidade. Ela é preservada; ver seção 4.
 
 Na prática isso significa que a loja precisa digitar manualmente, uma por uma:
 - a conta de energia todo mês;
@@ -36,6 +41,9 @@ casos.
 - Reajuste automático de valor (ex: IPCA anual).
 - Geração por agendador no servidor (`pg_cron`). O reabastecimento roda quando a
   tela de Entradas e Saídas é aberta.
+- Converter automaticamente as 11 contas já marcadas como `mensal` em séries
+  fixas. Fazer isso criaria ~121 lançamentos em produção antes de o dono ver a
+  tela funcionando. A conversão é um passo posterior, conta a conta, revisada.
 
 ## 3. Decisões de design
 
@@ -78,7 +86,15 @@ mesmo que todos os lançamentos dela tenham sido apagados.
   — `set null`, nunca `cascade`: apagar a regra de uma série não pode apagar
   histórico financeiro já baixado.
 - `+ parcela_numero int` — 1..N na parcelada; ordinal crescente na fixa.
-- `- recorrencia` — coluna morta, removida.
+- A coluna `recorrencia` é **mantida**, não removida. O código nunca a
+  escreveu, mas os dados importados do sistema antigo marcam ali quais contas
+  da loja são fixas — apagá-la destruiria exatamente a informação que este
+  recurso existe para tratar. Ela deixa de ser gravada pelo formulário (ver
+  abaixo) e fica congelada como registro histórico, até que essas 11 contas
+  sejam convertidas em séries de verdade, uma a uma, com o dono conferindo.
+- `recorrencia` sai do objeto `input` de `salvarLancamentoAction`. Hoje ele
+  grava `null` ali em toda edição, o que apagaria a marcação das 11 contas na
+  primeira vez que qualquer uma delas fosse editada.
 - Índice em `serie_id`.
 
 ### RLS
@@ -211,5 +227,5 @@ vitest, no padrão de `lib/calculations.test.ts`:
   horizonte de 12 meses.
 
 Os testes de `lib/ltv.test.ts`, `lib/relatorios.test.ts` e `lib/metas-calc.test.ts`
-montam objetos `LancamentoRow` completos à mão e precisam acompanhar a troca de
-`recorrencia` por `serie_id` e `parcela_numero`.
+montam objetos `LancamentoRow` completos à mão e precisam ganhar os campos
+`serie_id` e `parcela_numero`. O campo `recorrencia` continua no tipo.

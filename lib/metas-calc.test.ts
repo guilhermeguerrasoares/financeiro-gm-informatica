@@ -16,7 +16,7 @@ function lancamento(overrides: Partial<LancamentoRow>): LancamentoRow {
     custo: null,
     vencimento: "2026-08-10",
     competencia: null,
-    recorrencia: null,
+    recorrencia: null, serie_id: null, parcela_numero: null,
     observacao: null,
     created_at: "2026-01-01T00:00:00Z",
     ajuste_saldo: false,

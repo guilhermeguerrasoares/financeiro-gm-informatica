@@ -1,11 +1,19 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { Pencil, Paperclip, ChevronRight, ChevronDown, Trash2, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { StatusTag } from "@/components/StatusTag";
 import { saldo, status as calcStatus, totalPago, dentroDoPeriodo, ordenarLinhas } from "@/lib/calculations";
 import { money, formatDataBR, hoje } from "@/lib/format";
-import type { LancamentoRow, PagamentoRow, Categoria, Cliente, Fornecedor, ContaFinanceira } from "@/lib/types";
+import type {
+  LancamentoRow,
+  PagamentoRow,
+  Categoria,
+  Cliente,
+  Fornecedor,
+  ContaFinanceira,
+  SerieLancamento,
+} from "@/lib/types";
 import { LancamentoModal } from "./LancamentoModal";
 import { PagamentoModal } from "./PagamentoModal";
 import {
@@ -15,6 +23,7 @@ import {
   alterarContaPagamentoAction,
 } from "./pagamentoActions";
 import { uploadComprovante } from "./uploadComprovante";
+import { reabastecerSeriesFixasAction } from "./serieActions";
 import { FORMAS_PAGAMENTO_LABEL } from "@/lib/formasPagamento";
 
 function VerComprovanteButton({ path }: { path: string }) {
@@ -185,6 +194,7 @@ export function LancamentosTable({
   clientes,
   fornecedores,
   contas,
+  series,
 }: {
   lancamentos: LancamentoRow[];
   pagamentos: PagamentoRow[];
@@ -192,6 +202,7 @@ export function LancamentosTable({
   clientes: Cliente[];
   fornecedores: Fornecedor[];
   contas: ContaFinanceira[];
+  series: SerieLancamento[];
 }) {
   const [filtroStatus, setFiltroStatus] = useState<"pendentes" | "atrasado" | "quitado" | "todos">(
     "pendentes"
@@ -210,6 +221,20 @@ export function LancamentosTable({
 
   const nomeCategoria = (id: string | null) =>
     categorias.find((c) => c.id === id)?.nome ?? "—";
+
+  const serieDo = (l: LancamentoRow) =>
+    l.serie_id ? series.find((s) => s.id === l.serie_id) ?? null : null;
+
+  // Mantém as contas fixas com 12 meses à frente. Roda aqui, e não no
+  // carregamento do server component, porque renderizar uma página não deve
+  // gravar no banco - e uma escrita ali brigaria com o cache do App Router.
+  // A action é idempotente, então rodar a cada abertura não duplica nada.
+  useEffect(() => {
+    reabastecerSeriesFixasAction().catch(() => {
+      // Falhar aqui não pode derrubar a tela: os lançamentos já criados
+      // continuam visíveis, e a próxima abertura tenta de novo.
+    });
+  }, []);
 
   const toggleSort = (campo: "data" | "situacao") => {
     if (sortBy === campo) {
@@ -415,6 +440,28 @@ export function LancamentosTable({
                   </td>
                   <td className="font-medium">
                     {lancamento.descricao}
+                    {/* "(2/4)" é montado na hora a partir da série, não gravado
+                        na descrição: assim editar o texto de uma parcela não
+                        quebra a numeração das outras. */}
+                    {(() => {
+                      const serie = serieDo(lancamento);
+                      if (!serie) return null;
+                      if (serie.tipo_serie === "parcelada") {
+                        return (
+                          <span className="ml-2 text-xs text-[var(--text-dim)]">
+                            ({lancamento.parcela_numero}/{serie.total_parcelas})
+                          </span>
+                        );
+                      }
+                      return (
+                        <span
+                          className="ml-2 px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wide border border-[var(--border)] text-[var(--text-dim)]"
+                          title="Conta fixa mensal: o sistema mantém 12 meses criados à frente."
+                        >
+                          fixa
+                        </span>
+                      );
+                    })()}
                     {/* Marca visível para o ajuste não ser lido como venda ou
                         despesa de verdade ao bater o extrato. */}
                     {lancamento.ajuste_saldo && (

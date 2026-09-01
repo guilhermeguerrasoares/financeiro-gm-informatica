@@ -43,7 +43,14 @@ export type LancamentoRow = {
   custo: number | null;
   vencimento: string | null;
   competencia: string | null;
+  // Marcação herdada do sistema antigo ("mensal"/"semanal"), presente em 14
+  // lançamentos importados. Congelada: o formulário não a escreve mais, para
+  // não apagá-la a cada edição. Quem cumpre esse papel agora é `serie_id`.
   recorrencia: string | null;
+  // Série a que este lançamento pertence (parcelamento ou conta fixa), e a
+  // posição dele dentro dela. Null nos lançamentos avulsos, que são a maioria.
+  serie_id: string | null;
+  parcela_numero: number | null;
   observacao: string | null;
   // Lançamento de conciliação de conta: entra no saldo, fica fora de
   // faturamento, metas, DRE e fluxo (ver migração 0013).
@@ -75,5 +82,22 @@ export type PagamentoRow = {
   conta_financeira_id: string | null;
   data_pagamento: string;
   comprovante_url: string | null;
+  observacao: string | null;
+};
+
+export type SerieLancamento = {
+  id: string;
+  tipo_serie: "parcelada" | "fixa";
+  frequencia: "semanal" | "quinzenal" | "mensal";
+  data_inicio: string;
+  total_parcelas: number | null;
+  ativa: boolean;
+  descricao: string;
+  tipo: "despesa" | "receita";
+  categoria_id: string | null;
+  cliente_id: string | null;
+  fornecedor_id: string | null;
+  valor: number;
+  custo: number | null;
   observacao: string | null;
 };
