@@ -137,7 +137,7 @@ export function PagamentoModal({
           <label className="block text-xs text-[var(--text-dim)] mb-1">Comprovante (foto ou PDF)</label>
           <input
             type="file"
-            accept="image/*,application/pdf"
+            accept="image/jpeg,image/png,image/webp,application/pdf"
             onChange={(e) => {
               const file = e.target.files?.[0] ?? null;
               if (file && file.size > 10 * 1024 * 1024) {

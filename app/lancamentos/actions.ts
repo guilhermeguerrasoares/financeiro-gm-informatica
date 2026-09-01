@@ -18,15 +18,23 @@ import { criarSerie, atualizarSerie, excluirSerie } from "@/lib/queries/series";
 import { revalidarPaginasFinanceiras } from "./revalidate";
 import { validarComprovante, montarCaminhoComprovante } from "@/lib/comprovantes";
 
-async function uploadComprovanteServidor(arquivo: File, lancamentoId: string): Promise<string | null> {
-  if (arquivo.size === 0) return null;
+// O erro de validação volta como valor, não como exceção: o Next.js redige
+// mensagens de erro de server action em produção (troca por um texto
+// genérico com digest), então um `throw` aqui nunca chegaria ao usuário em
+// português. Falha de upload no Storage continua lançando exceção - é
+// inesperada, não uma validação com mensagem pensada para o usuário ler.
+async function uploadComprovanteServidor(
+  arquivo: File,
+  lancamentoId: string
+): Promise<{ path: string | null; erro: string | null }> {
+  if (arquivo.size === 0) return { path: null, erro: null };
   const erro = validarComprovante(arquivo);
-  if (erro) throw new Error(erro);
+  if (erro) return { path: null, erro };
   const supabase = await createClient();
   const path = montarCaminhoComprovante(lancamentoId, arquivo.name, Date.now());
   const { error } = await supabase.storage.from("comprovantes").upload(path, arquivo);
   if (error) throw error;
-  return path;
+  return { path, erro: null };
 }
 
 // 12 meses à frente numa conta fixa mensal. A parcelada usa o número de
@@ -154,7 +162,16 @@ export async function salvarLancamentoAction(formData: FormData) {
     const dataPagamento = formData.get("data_pagamento") as string;
     const permutaDescricao = (formData.get("permuta_descricao") as string) || "";
     const arquivo = formData.get("comprovante") as File | null;
-    const comprovantePath = arquivo ? await uploadComprovanteServidor(arquivo, lancamento.id) : null;
+    const comprovante = arquivo
+      ? await uploadComprovanteServidor(arquivo, lancamento.id)
+      : { path: null, erro: null };
+    // O lançamento já foi criado acima; um comprovante inválido não desfaz
+    // isso, só impede o registro do pagamento. Quem chama decide o que
+    // mostrar ao usuário a partir do `erro`.
+    if (comprovante.erro) {
+      revalidarPaginasFinanceiras();
+      return { lancamento, aviso, erro: comprovante.erro };
+    }
     const taxaRaw = formData.get("taxa") as string;
 
     const { criouPermuta } = await registrarPagamentoComPermuta({
@@ -163,7 +180,7 @@ export async function salvarLancamentoAction(formData: FormData) {
       valorCaixa: Number(formData.get("pagamento_valor")) || 0,
       taxa: taxaRaw ? Number(taxaRaw) : null,
       formaPagamento: (formData.get("forma_pagamento") as string) || null,
-      comprovanteUrl: comprovantePath,
+      comprovanteUrl: comprovante.path,
       permutaDescricao,
       valorPermuta: Number(formData.get("permuta_valor")) || 0,
       contaFinanceiraId: (formData.get("conta_financeira_id") as string) || null,

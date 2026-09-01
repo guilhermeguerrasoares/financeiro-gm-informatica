@@ -60,7 +60,7 @@ function AnexarComprovanteButton({ pagamentoId, lancamentoId }: { pagamentoId: s
       {enviando ? "Enviando..." : "Anexar comprovante"}
       <input
         type="file"
-        accept="image/*,application/pdf"
+        accept="image/jpeg,image/png,image/webp,application/pdf"
         className="hidden"
         disabled={enviando}
         onClick={(e) => e.stopPropagation()}
@@ -76,8 +76,8 @@ function AnexarComprovanteButton({ pagamentoId, lancamentoId }: { pagamentoId: s
           try {
             const path = await uploadComprovante(file, lancamentoId);
             await anexarComprovanteAction(pagamentoId, path);
-          } catch {
-            alert("Não foi possível anexar o comprovante.");
+          } catch (e) {
+            alert(e instanceof Error ? e.message : "Não foi possível anexar o comprovante.");
           } finally {
             setEnviando(false);
           }

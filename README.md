@@ -74,13 +74,14 @@ apenas na coluna `nome`. Conferir com:
 select privilege_type, column_name
 from information_schema.column_privileges
 where table_schema = 'public' and table_name = 'profiles'
-  and grantee = 'authenticated' and privilege_type = 'UPDATE';
+  and grantee in ('authenticated', 'anon', 'PUBLIC') and privilege_type = 'UPDATE';
 ```
 
-O resultado tem que ser uma linha só: `nome`. Um `grant all on all tables in
-schema public to authenticated` futuro reabre o buraco em silêncio, porque
-privilégio de tabela ganha de privilégio de coluna. Se essa consulta voltar
-mais de uma linha, isso é uma regressão de segurança, não uma correção.
+O resultado tem que ser uma linha só no total: `nome`, para `authenticated`. Um
+`grant all on all tables in schema public to authenticated` futuro reabre o
+buraco em silêncio, porque privilégio de tabela ganha de privilégio de
+coluna. Se essa consulta voltar mais de uma linha, isso é uma regressão de
+segurança, não uma correção.
 
 ### Proteção de login
 

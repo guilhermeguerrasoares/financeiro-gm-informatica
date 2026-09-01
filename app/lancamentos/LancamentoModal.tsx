@@ -57,8 +57,15 @@ export function LancamentoModal({
     setEnviando(true);
     try {
       formData.set("alcance", alcance);
-      const { aviso } = await salvarLancamentoAction(formData);
-      if (aviso) alert(aviso);
+      const resultado = await salvarLancamentoAction(formData);
+      // Falha de validação do comprovante volta como valor (não como
+      // exceção - ver uploadComprovanteServidor em actions.ts), então trata
+      // igual a um erro apesar de a chamada não ter lançado.
+      if ("erro" in resultado && resultado.erro) {
+        setErro(resultado.erro);
+        return;
+      }
+      if (resultado.aviso) alert(resultado.aviso);
       onClose();
     } catch (e) {
       setErro(e instanceof Error ? e.message : "Não foi possível salvar o lançamento. Tente novamente.");
@@ -301,7 +308,7 @@ export function LancamentoModal({
               <input
                 type="file"
                 name="comprovante"
-                accept="image/*,application/pdf"
+                accept="image/jpeg,image/png,image/webp,application/pdf"
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (file && file.size > 10 * 1024 * 1024) {
