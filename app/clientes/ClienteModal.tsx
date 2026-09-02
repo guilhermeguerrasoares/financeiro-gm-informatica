@@ -44,20 +44,16 @@ export function ClienteModal({
           />
         </div>
 
-        <div>
+        {/* O campo "Documento" (CPF/CNPJ do cliente) saiu daqui de propósito: a
+            loja não usa esse dado, e dado pessoal que não se coleta é dado que
+            não vaza nem precisa ser protegido. A coluna continua no banco,
+            aceitando nulo — voltar a pedir o documento é reintroduzir este
+            bloco e a linha correspondente em actions.ts, nada mais. */}
+        <div className="col-span-2">
           <label className="block text-xs text-[var(--text-dim)] mb-1">Contato</label>
           <input
             name="contato"
             defaultValue={cliente?.contato ?? ""}
-            className="w-full px-3 py-2 rounded bg-[var(--surface-2)] border border-[var(--border)]"
-          />
-        </div>
-
-        <div>
-          <label className="block text-xs text-[var(--text-dim)] mb-1">Documento</label>
-          <input
-            name="documento"
-            defaultValue={cliente?.documento ?? ""}
             className="w-full px-3 py-2 rounded bg-[var(--surface-2)] border border-[var(--border)]"
           />
         </div>

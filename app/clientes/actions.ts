@@ -9,7 +9,11 @@ export async function salvarClienteAction(formData: FormData) {
   const input = {
     nome: formData.get("nome") as string,
     contato: (formData.get("contato") as string) || null,
-    documento: (formData.get("documento") as string) || null,
+    // O formulário não pede mais o documento (CPF/CNPJ) do cliente. Fica
+    // explicitamente nulo em vez de sumir: a coluna continua existindo, e o
+    // tipo `Omit<Cliente, "id">` exige o campo. Para voltar a coletar, é ler
+    // do formulário de novo aqui e reintroduzir o input no ClienteModal.
+    documento: null,
     classificacao: formData.get("classificacao") as "padrao" | "vip" | "recorrente" | "inadimplente",
     observacao: (formData.get("observacao") as string) || null,
   };
