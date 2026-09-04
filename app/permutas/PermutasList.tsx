@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import { money, formatDataBR, diffDias, dataLocal, hoje } from "@/lib/format";
 import { lucroPermuta } from "@/lib/calculations";
 import { VenderModal } from "./VenderModal";
+import { DesmembrarModal } from "./DesmembrarModal";
+import { NovaPermutaModal } from "./NovaPermutaModal";
 import type { ItemPermuta } from "@/lib/queries/itensPermuta";
 import type { Categoria, ContaFinanceira } from "@/lib/types";
 
@@ -31,6 +33,8 @@ export function PermutasList({
   contas: ContaFinanceira[];
 }) {
   const [vendendo, setVendendo] = useState<ItemPermuta | null>(null);
+  const [desmembrando, setDesmembrando] = useState<ItemPermuta | null>(null);
+  const [criandoAvulsa, setCriandoAvulsa] = useState(false);
   const hojeStr = hoje();
 
   const resumo = useMemo(() => {
@@ -69,6 +73,16 @@ export function PermutasList({
 
   return (
     <div>
+      <div className="flex justify-end mb-4">
+        <button
+          type="button"
+          onClick={() => setCriandoAvulsa(true)}
+          className="px-4 py-2 text-sm bg-[var(--accent-blue)] text-[var(--bg)] font-semibold rounded"
+        >
+          Nova permuta
+        </button>
+      </div>
+
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
         <div className="glass rounded-xl p-4">
           <p className="text-xs text-[var(--text-dim)] uppercase tracking-wide">Recebido em permutas</p>
@@ -130,13 +144,26 @@ export function PermutasList({
                 <td className="text-right">{dias}</td>
                 <td className="text-right">
                   {item.status === "em_estoque" && (
-                    <button
-                      type="button"
-                      onClick={() => setVendendo(item)}
-                      className="px-3 py-1 text-xs bg-[var(--accent-green)] text-[var(--bg)] font-semibold rounded"
-                    >
-                      Marcar como vendido
-                    </button>
+                    <div className="flex justify-end gap-2">
+                      {/* Só faz sentido dividir o que ainda tem valor a dividir:
+                          um item de valor zero não tem como sustentar dois. */}
+                      {(item.valor_estimado ?? 0) > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setDesmembrando(item)}
+                          className="px-3 py-1 text-xs border border-[var(--border)] rounded"
+                        >
+                          Desmembrar
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setVendendo(item)}
+                        className="px-3 py-1 text-xs bg-[var(--accent-green)] text-[var(--bg)] font-semibold rounded"
+                      >
+                        Marcar como vendido
+                      </button>
+                    </div>
                   )}
                 </td>
               </tr>
@@ -153,6 +180,13 @@ export function PermutasList({
       </table>
 
       <VenderModal item={vendendo} onClose={() => setVendendo(null)} categorias={categorias} contas={contas} />
+      <DesmembrarModal item={desmembrando} onClose={() => setDesmembrando(null)} />
+      <NovaPermutaModal
+        open={criandoAvulsa}
+        onClose={() => setCriandoAvulsa(false)}
+        categorias={categorias}
+        contas={contas}
+      />
     </div>
   );
 }
