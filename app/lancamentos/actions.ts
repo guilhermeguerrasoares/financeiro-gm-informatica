@@ -41,7 +41,11 @@ async function uploadComprovanteServidor(
 // parcelas que o usuário digitou.
 const MESES_CONTA_FIXA = 12;
 
-async function criarSerieDoFormulario(formData: FormData, tipoSerie: "parcelada" | "fixa") {
+async function criarSerieDoFormulario(
+  formData: FormData,
+  tipoSerie: "parcelada" | "fixa",
+  idempotencyKey: string | null
+) {
   const vencimento = (formData.get("vencimento") as string) || "";
   if (!vencimento) {
     throw new Error("Informe o vencimento da primeira ocorrência para poder repetir o lançamento.");
@@ -89,13 +93,17 @@ async function criarSerieDoFormulario(formData: FormData, tipoSerie: "parcelada"
     modo,
   });
 
-  await criarSerie(serie, ocorrencias);
+  await criarSerie(serie, ocorrencias, idempotencyKey);
   revalidarPaginasFinanceiras();
   return { lancamento: null, aviso: null };
 }
 
 export async function salvarLancamentoAction(formData: FormData) {
   const id = formData.get("id") as string | null;
+  // Identifica o preenchimento do formulário, não a linha: é o que deixa o
+  // banco recusar o segundo envio do mesmo preenchimento (migração 0021).
+  // Só vale na criação - uma edição tem `id` e é idempotente por natureza.
+  const idempotencyKey = (formData.get("idempotency_key") as string) || null;
   const registrandoPagamento = !id && formData.get("registrar_pagamento") === "on";
 
   const repeticao = (formData.get("repeticao") as string) || "nenhuma";
@@ -103,7 +111,7 @@ export async function salvarLancamentoAction(formData: FormData) {
   // Criação de série é um caminho próprio: em vez de um lançamento, nascem N.
   // Só vale na criação - editar uma parcela nunca reconstrói a série.
   if (!id && repeticao !== "nenhuma") {
-    return criarSerieDoFormulario(formData, repeticao as "parcelada" | "fixa");
+    return criarSerieDoFormulario(formData, repeticao as "parcelada" | "fixa", idempotencyKey);
   }
 
   // Validado antes de criar o lançamento: se deixarmos passar e
@@ -146,7 +154,9 @@ export async function salvarLancamentoAction(formData: FormData) {
     observacao: (formData.get("observacao") as string) || null,
   };
 
-  const lancamento = id ? await atualizarLancamento(id, input) : await criarLancamento(input);
+  const lancamento = id
+    ? await atualizarLancamento(id, input)
+    : await criarLancamento({ ...input, idempotency_key: idempotencyKey });
 
   // Propagação para o resto da série. `vencimento` e `tipo` ficam de fora de
   // propósito: cada ocorrência tem a data dela, e trocar entrada por saída no

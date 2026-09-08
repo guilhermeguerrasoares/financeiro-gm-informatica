@@ -1,15 +1,19 @@
 import { createClient } from "@/lib/supabase/server";
 import type { PagamentoRow } from "@/lib/types";
+import { buscarTodasAsPaginas } from "./paginar";
 
 export async function listarPagamentos() {
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("pagamentos")
-    .select("*")
-    .order("data_pagamento", { ascending: false });
-
-  if (error) throw error;
-  return data as PagamentoRow[];
+  return buscarTodasAsPaginas<PagamentoRow>((de, ate) =>
+    supabase
+      .from("pagamentos")
+      .select("*")
+      .order("data_pagamento", { ascending: false })
+      // Ordenação total, para nenhuma linha se perder na junção das páginas -
+      // ver o comentário em listarLancamentos.
+      .order("id", { ascending: true })
+      .range(de, ate)
+  );
 }
 
 export async function estornarPagamento(id: string) {

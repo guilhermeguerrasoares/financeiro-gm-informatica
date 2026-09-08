@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Modal } from "@/components/Modal";
 import { ModalError } from "@/components/ModalError";
 import { PermutaItemFields } from "./PermutaItemFields";
@@ -34,6 +34,22 @@ export function LancamentoModal({
   const formRef = useRef<HTMLFormElement>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
+  // Trava de reentrada em ref, não em estado: `enviando` só vale no próximo
+  // render, e o segundo envio chega antes dele. O ref muda na hora.
+  const salvando = useRef(false);
+  // Identifica ESTE preenchimento do formulário. Renovada a cada abertura do
+  // modal, para dois lançamentos iguais de propósito (duas vendas do mesmo
+  // valor no mesmo dia) continuarem sendo dois. Quem recusa o reenvio da
+  // mesma chave é o banco - ver migração 0021.
+  //
+  // Em ref e não em estado: como valor de campo, o servidor renderizaria uma
+  // chave e o cliente hidrataria com outra, e a divergência faria o React
+  // trocar o valor no meio do preenchimento. Aqui ela nunca passa pelo HTML -
+  // é anexada ao FormData na hora do envio.
+  const idempotencyKey = useRef<string | null>(null);
+  useEffect(() => {
+    if (open) idempotencyKey.current = crypto.randomUUID();
+  }, [open]);
 
   const [valorLancamento, setValorLancamento] = useState(lancamento?.valor ?? 0);
   const [vencimento, setVencimento] = useState(lancamento?.vencimento ?? "");
@@ -53,10 +69,19 @@ export function LancamentoModal({
   );
 
   async function salvar(formData: FormData, alcance: "este" | "proximos" | "todos") {
+    // Segundo envio do mesmo preenchimento: o botão fica desabilitado, mas
+    // Enter dentro de qualquer campo reenvia o form assim mesmo. Foi por aqui
+    // que passaram as duplicatas de agosto/setembro.
+    if (salvando.current) return;
+    salvando.current = true;
     setErro(null);
     setEnviando(true);
     try {
       formData.set("alcance", alcance);
+      // `??` e não só o ref: se o efeito de abertura não tiver rodado por
+      // algum motivo, uma chave nova aqui ainda protege este envio. Ficar sem
+      // chave seria perder a trava em silêncio, que é o pior dos casos.
+      formData.set("idempotency_key", idempotencyKey.current ?? crypto.randomUUID());
       const resultado = await salvarLancamentoAction(formData);
       // Falha de validação do comprovante volta como valor (não como
       // exceção - ver uploadComprovanteServidor em actions.ts), então trata
@@ -70,6 +95,7 @@ export function LancamentoModal({
     } catch (e) {
       setErro(e instanceof Error ? e.message : "Não foi possível salvar o lançamento. Tente novamente.");
     } finally {
+      salvando.current = false;
       setEnviando(false);
       setPerguntandoAlcance(null);
     }

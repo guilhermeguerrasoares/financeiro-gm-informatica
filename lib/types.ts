@@ -59,6 +59,10 @@ export type LancamentoRow = {
   // a data do movimento. Serve de desempate na ordenação: dois lançamentos
   // do mesmo dia precisam de uma ordem estável entre si.
   created_at: string;
+  // Identifica o preenchimento do formulário que gerou a linha, para o banco
+  // recusar o segundo envio do mesmo preenchimento (migração 0021). Null em
+  // tudo que foi criado antes dela.
+  idempotency_key: string | null;
 };
 
 export type Meta = {

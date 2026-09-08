@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import type { SerieLancamento } from "@/lib/types";
 import type { Ocorrencia } from "@/lib/series";
+import { buscarTodasAsPaginas } from "./paginar";
 
 export type CamposSerie = {
   tipo_serie: "parcelada" | "fixa";
@@ -19,9 +20,9 @@ export type CamposSerie = {
 
 export async function listarSeries() {
   const supabase = await createClient();
-  const { data, error } = await supabase.from("series_lancamentos").select("*");
-  if (error) throw error;
-  return data as SerieLancamento[];
+  return buscarTodasAsPaginas<SerieLancamento>((de, ate) =>
+    supabase.from("series_lancamentos").select("*").order("id", { ascending: true }).range(de, ate)
+  );
 }
 
 export async function listarSeriesFixasAtivas() {
@@ -41,25 +42,41 @@ export async function ultimoOrdinalPorSerie(serieIds: string[]) {
   if (serieIds.length === 0) return new Map<string, number>();
 
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("lancamentos")
-    .select("serie_id, parcela_numero")
-    .in("serie_id", serieIds);
-  if (error) throw error;
+  // Paginado: um corte silencioso aqui é o pior de todos. `ultimoOrdinal`
+  // voltaria menor do que é, e o reabastecimento recriaria ocorrências que já
+  // existem - duplicando justamente as contas fixas. O índice único de
+  // (serie_id, parcela_numero) da migração 0021 barra o estrago no banco, mas
+  // aí o insert falha e a tela para de reabastecer; melhor não chegar lá.
+  const data = await buscarTodasAsPaginas<{ serie_id: string; parcela_numero: number | null }>(
+    (de, ate) =>
+      supabase
+        .from("lancamentos")
+        .select("serie_id, parcela_numero")
+        .in("serie_id", serieIds)
+        .order("id", { ascending: true })
+        .range(de, ate)
+  );
 
   const ultimos = new Map<string, number>();
-  for (const linha of data as { serie_id: string; parcela_numero: number | null }[]) {
+  for (const linha of data) {
     const ordinal = (linha.parcela_numero ?? 0) - 1;
     ultimos.set(linha.serie_id, Math.max(ultimos.get(linha.serie_id) ?? -1, ordinal));
   }
   return ultimos;
 }
 
-export async function criarSerie(serie: CamposSerie, ocorrencias: Ocorrencia[]) {
+export async function criarSerie(
+  serie: CamposSerie,
+  ocorrencias: Ocorrencia[],
+  idempotencyKey: string | null
+) {
   const supabase = await createClient();
+  // A RPC devolve a série já existente quando a chave se repete, em vez de
+  // criar a segunda - ver migração 0021.
   const { data, error } = await supabase.rpc("criar_serie_lancamentos", {
     p_serie: serie,
     p_ocorrencias: ocorrencias,
+    p_idempotency_key: idempotencyKey,
   });
   if (error) throw error;
   return data as string;
