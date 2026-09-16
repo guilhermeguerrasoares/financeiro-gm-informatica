@@ -1,7 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { criarContaFinanceira, registrarAjusteSaldo } from "@/lib/queries/contasFinanceiras";
+import {
+  criarContaFinanceira,
+  registrarAjusteSaldo,
+  contarPagamentosDaConta,
+  excluirContaFinanceira,
+} from "@/lib/queries/contasFinanceiras";
 import { round2 } from "@/lib/calculations";
 import { revalidarPaginasFinanceiras } from "@/app/lancamentos/revalidate";
 
@@ -37,4 +42,20 @@ export async function criarContaAction(formData: FormData) {
   });
   revalidatePath("/contas");
   revalidatePath("/dashboard");
+}
+
+export async function excluirContaAction(id: string) {
+  // A FK de pagamentos é "on delete set null": apagar uma conta com
+  // movimentação deixaria esses pagamentos "sem conta" e tiraria o dinheiro
+  // deles de todo saldo, sem aviso. A tela já esconde a opção nesse caso;
+  // aqui é a trava para quem chegar por outro caminho.
+  const qtd = await contarPagamentosDaConta(id);
+  if (qtd > 0) {
+    throw new Error(
+      `Esta conta tem ${qtd} pagamento(s) registrados. Mude a conta desses pagamentos em Lançamentos antes de excluí-la.`
+    );
+  }
+
+  await excluirContaFinanceira(id);
+  revalidarPaginasFinanceiras();
 }

@@ -40,3 +40,26 @@ export async function criarContaFinanceira(input: {
   const { error } = await supabase.from("contas_financeiras").insert(input);
   if (error) throw error;
 }
+
+export async function contarPagamentosDaConta(id: string) {
+  const supabase = await createClient();
+  const { count, error } = await supabase
+    .from("pagamentos")
+    .select("id", { count: "exact", head: true })
+    .eq("conta_financeira_id", id);
+  if (error) throw error;
+  return count ?? 0;
+}
+
+// Delete de verdade, não `ativo = false`: só é chamado para conta sem nenhum
+// pagamento, então não há histórico a preservar. O count detecta o caso em
+// que a RLS (só dono/gerente apaga) filtra a linha sem devolver erro.
+export async function excluirContaFinanceira(id: string) {
+  const supabase = await createClient();
+  const { count, error } = await supabase
+    .from("contas_financeiras")
+    .delete({ count: "exact" })
+    .eq("id", id);
+  if (error) throw error;
+  if (!count) throw new Error("A conta não foi excluída: seu usuário não tem permissão para isso.");
+}
