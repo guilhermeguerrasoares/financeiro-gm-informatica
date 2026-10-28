@@ -2,6 +2,7 @@ import { listarDividasClientes, listarDividasLoja } from "@/lib/queries/dividas"
 import { listarClientes } from "@/lib/queries/clientes";
 import { listarPagamentos } from "@/lib/queries/pagamentos";
 import { saldo, status as calcStatus } from "@/lib/calculations";
+import { classeDoSaldo } from "@/lib/corSituacao";
 import { money, formatDataBR, hoje } from "@/lib/format";
 import { StatusTag } from "@/components/StatusTag";
 
@@ -33,16 +34,21 @@ export default async function DividasPage() {
         <tbody>
           {dividasClientes
             .filter((l) => saldo(l, pagamentos) > 0.004)
-            .map((l) => (
-              <tr key={l.id} className="border-b border-[var(--border)]">
-                <td className="py-2">{nomeCliente(l.cliente_id)}</td>
-                <td>{formatDataBR(l.vencimento)}</td>
-                <td>
-                  <StatusTag status={calcStatus(l, pagamentos, hojeStr)} />
-                </td>
-                <td className="text-right font-semibold text-[var(--accent-red)]">{money(saldo(l, pagamentos))}</td>
-              </tr>
-            ))}
+            .map((l) => {
+              const situacao = calcStatus(l, pagamentos, hojeStr);
+              return (
+                <tr key={l.id} className="border-b border-[var(--border)]">
+                  <td className="py-2">{nomeCliente(l.cliente_id)}</td>
+                  <td>{formatDataBR(l.vencimento)}</td>
+                  <td>
+                    <StatusTag status={situacao} />
+                  </td>
+                  <td className={`text-right font-semibold ${classeDoSaldo(situacao)}`}>
+                    {money(saldo(l, pagamentos))}
+                  </td>
+                </tr>
+              );
+            })}
         </tbody>
       </table>
 
@@ -59,16 +65,21 @@ export default async function DividasPage() {
         <tbody>
           {dividasLoja
             .filter((l) => saldo(l, pagamentos) > 0.004)
-            .map((l) => (
-              <tr key={l.id} className="border-b border-[var(--border)]">
-                <td className="py-2">{l.descricao}</td>
-                <td>{formatDataBR(l.vencimento)}</td>
-                <td>
-                  <StatusTag status={calcStatus(l, pagamentos, hojeStr)} />
-                </td>
-                <td className="text-right font-semibold text-[var(--accent-red)]">{money(saldo(l, pagamentos))}</td>
-              </tr>
-            ))}
+            .map((l) => {
+              const situacao = calcStatus(l, pagamentos, hojeStr);
+              return (
+                <tr key={l.id} className="border-b border-[var(--border)]">
+                  <td className="py-2">{l.descricao}</td>
+                  <td>{formatDataBR(l.vencimento)}</td>
+                  <td>
+                    <StatusTag status={situacao} />
+                  </td>
+                  <td className={`text-right font-semibold ${classeDoSaldo(situacao)}`}>
+                    {money(saldo(l, pagamentos))}
+                  </td>
+                </tr>
+              );
+            })}
         </tbody>
       </table>
     </div>

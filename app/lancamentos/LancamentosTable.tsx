@@ -4,6 +4,7 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import { Pencil, Paperclip, ChevronRight, ChevronDown, Trash2, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { StatusTag } from "@/components/StatusTag";
 import { saldo, status as calcStatus, totalPago, dentroDoPeriodo, ordenarLinhas } from "@/lib/calculations";
+import { classeDoSaldo } from "@/lib/corSituacao";
 import { money, formatDataBR, hoje } from "@/lib/format";
 import type {
   LancamentoRow,
@@ -478,7 +479,7 @@ export function LancamentosTable({
                     <StatusTag status={status} />
                   </td>
                   <td className="text-right">{money(lancamento.valor)}</td>
-                  <td className="text-right font-semibold text-[var(--accent-red)]">{money(falta)}</td>
+                  <td className={`text-right font-semibold ${classeDoSaldo(status)}`}>{money(falta)}</td>
                   <td className="text-right">
                     <div className="flex justify-end items-center gap-2">
                       {falta > 0.004 && (
