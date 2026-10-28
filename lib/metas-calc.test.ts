@@ -19,7 +19,7 @@ function lancamento(overrides: Partial<LancamentoRow>): LancamentoRow {
     recorrencia: null, serie_id: null, parcela_numero: null,
     observacao: null,
     created_at: "2026-01-01T00:00:00Z",
-    ajuste_saldo: false, transferencia_id: null,
+    ajuste_saldo: false, transferencia_id: null, movimento_fornecedor: "compra" as const,
     idempotency_key: null,
     ...overrides,
   };
@@ -174,7 +174,7 @@ describe("ajuste de saldo", () => {
   it("não conta a perna de entrada de uma transferência no faturamento", () => {
     const lancamentos = [
       lancamento({ id: "venda", tipo: "receita" }),
-      lancamento({ id: "transf-entrada", tipo: "receita", valor: 5000, transferencia_id: "t1" }),
+      lancamento({ id: "transf-entrada", tipo: "receita", valor: 5000, transferencia_id: "t1", movimento_fornecedor: "compra" as const }),
     ];
     const pagamentos = [
       pagamento({ id: "p-venda", lancamento_id: "venda", valor: 100 }),

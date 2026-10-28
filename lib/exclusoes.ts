@@ -10,6 +10,7 @@
 export type LinhaClassificavel = {
   ajuste_saldo: boolean;
   transferencia_id: string | null;
+  movimento_fornecedor: "compra" | "ajuste" | "quitacao";
 };
 
 export function entraNosRelatorios(l: LinhaClassificavel): boolean {
@@ -18,5 +19,13 @@ export function entraNosRelatorios(l: LinhaClassificavel): boolean {
   // Perna de transferência: o dinheiro mudou de lugar, não entrou nem saiu
   // da loja. Depositar R$ 1.000 do caixa no banco não é faturamento.
   if (l.transferencia_id !== null) return false;
+  // Ajuste de dívida de fornecedor: reconhecer que se deve R$ 6.500 não é
+  // gastar R$ 6.500 - não houve entrada nem saída. Ele nunca tem pagamento, e
+  // como também não tem vencimento, "atrasado" não significa nada para ele:
+  // por isso fica fora dos cards do dashboard junto com o resto.
+  //
+  // A quitação, ao contrário, ENTRA: o dinheiro saiu de verdade, e a compra
+  // que gerou aquela dívida nunca foi lançada, então ela nunca bateu no DRE.
+  if (l.movimento_fornecedor === "ajuste") return false;
   return true;
 }

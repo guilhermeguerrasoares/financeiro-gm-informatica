@@ -152,6 +152,10 @@ export async function salvarLancamentoAction(formData: FormData) {
     vencimento: (formData.get("vencimento") as string) || null,
     competencia: (formData.get("vencimento") as string)?.slice(0, 7) || null,
     observacao: (formData.get("observacao") as string) || null,
+    // Toda despesa lançada aqui é compra. O formulário ainda não pergunta
+    // "compra nova ou pagamento de dívida" - quando perguntar, é este campo
+    // que ele preenche. Ajuste e quitação nascem por RPC, não por aqui.
+    movimento_fornecedor: "compra" as const,
   };
 
   const lancamento = id
