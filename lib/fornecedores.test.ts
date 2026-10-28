@@ -129,6 +129,33 @@ describe("movimentosDoFornecedor", () => {
     expect(linha.status).toBe("parcial");
   });
 
+  // Um ajuste que diminui a dívida é gravado como receita. Se a linha
+  // mostrasse "falta 500", pareceria algo a receber do fornecedor - e é o
+  // contrário: é abatimento da dívida. Na tela ele aparece negativo.
+  it("ajuste que diminui a dívida aparece como abatimento, não como valor a receber", () => {
+    const ajuste = lanc({
+      id: "aj-menos",
+      movimento_fornecedor: "ajuste",
+      tipo: "receita",
+      valor: 500,
+      vencimento: null,
+    });
+    const [linha] = movimentosDoFornecedor("f1", [ajuste], [], "2026-10-28");
+    expect(linha.falta).toBe(-500);
+  });
+
+  it("ajuste que aumenta a dívida aparece pelo valor cheio", () => {
+    const ajuste = lanc({
+      id: "aj-mais",
+      movimento_fornecedor: "ajuste",
+      tipo: "despesa",
+      valor: 6500,
+      vencimento: null,
+    });
+    const [linha] = movimentosDoFornecedor("f1", [ajuste], [], "2026-10-28");
+    expect(linha.falta).toBe(6500);
+  });
+
   it("não traz lançamento de outro fornecedor", () => {
     expect(movimentosDoFornecedor("f1", [lanc({ fornecedor_id: "f2" })], [], "2026-10-28")).toEqual([]);
   });

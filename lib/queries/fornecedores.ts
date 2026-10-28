@@ -27,6 +27,26 @@ export async function atualizarFornecedor(id: string, input: Partial<Omit<Fornec
   if (error) throw error;
 }
 
+// Grava a diferença entre a dívida que o sistema calcula e a que o dono
+// informa, como um lançamento datado sem pagamento nenhum (RPC
+// registrar_ajuste_divida_fornecedor, migração 0023). Reconhecer dívida não é
+// gastar: nada disso toca em saldo de conta, DRE, metas ou fluxo.
+export async function registrarAjusteDivida(input: {
+  fornecedor_id: string;
+  data: string;
+  diferenca: number;
+  observacao: string | null;
+}) {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("registrar_ajuste_divida_fornecedor", {
+    p_fornecedor_id: input.fornecedor_id,
+    p_data: input.data,
+    p_diferenca: input.diferenca,
+    p_observacao: input.observacao,
+  });
+  if (error) throw error;
+}
+
 export async function excluirFornecedor(id: string) {
   const supabase = await createClient();
   const { error } = await supabase.from("fornecedores").delete().eq("id", id);

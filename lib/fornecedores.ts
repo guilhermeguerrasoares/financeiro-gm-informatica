@@ -19,6 +19,12 @@ export type LinhaFornecedor = {
 //
 //   saldo devedor = compras em aberto + ajustes - quitações
 //
+// Por que o ajuste não vaza para as telas de dívida, conferido caminho a
+// caminho: `listarDividasClientes` exige cliente_id não nulo, e o ajuste tem
+// fornecedor_id; `listarDividasLoja` filtra por categorias do grupo "Despesas
+// Financeiras", e o ajuste nasce sem categoria; os cards do dashboard passam
+// por entraNosRelatorios(), que o exclui. Ele também nasce sem vencimento,
+// então nunca é "atrasado" em cálculo nenhum.
 export function saldoDevedor(
   fornecedorId: string,
   lancamentos: LancamentoRow[],
@@ -74,7 +80,15 @@ export function movimentosDoFornecedor(
 
     linhas.push({
       lancamento: l,
-      falta: saldo(l, pagamentos),
+      // Ajuste não é conta a pagar: ele afirma a dívida. Por isso contribui
+      // com o próprio valor, com sinal - o que diminui a dívida é gravado
+      // como receita e aparece negativo, como abatimento. Passá-lo por
+      // saldo() mostraria "falta 500" num crédito, que se lê como algo a
+      // receber do fornecedor - o contrário do que é.
+      falta:
+        l.movimento_fornecedor === "ajuste"
+          ? round2(l.tipo === "despesa" ? l.valor : -l.valor)
+          : saldo(l, pagamentos),
       status: calcStatus(l, pagamentos, hoje),
       diasEmAberto: diffDias(entrada, hoje),
     });
