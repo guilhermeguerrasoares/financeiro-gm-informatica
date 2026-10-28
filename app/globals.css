@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+/* O escuro é o padrão e mora em :root: é o tema que o sistema sempre teve, e
+   quem nunca escolheu nada continua vendo exatamente a mesma tela. O claro
+   redefine as mesmas variáveis sob [data-theme="claro"] - nenhum componente
+   sabe qual tema está ativo, todos leem as variáveis. */
 :root {
   --bg: #05070A;
   --surface: rgba(21, 27, 35, 0.6);
@@ -19,6 +23,33 @@
   --accent-amber: #FBBF24;
   --accent-blue: #60A5FA;
 
+  /* Fundo das etiquetas de situação. Existem como variável porque eram
+     classes Tailwind fixas (bg-red-950 e irmãs): tom escuro cravado, que no
+     tema claro vira um borrão preto atrás de texto colorido. */
+  --tag-vermelho-bg: rgba(248, 113, 113, 0.16);
+  --tag-azul-bg: rgba(96, 165, 250, 0.16);
+  --tag-ambar-bg: rgba(251, 191, 36, 0.16);
+  --tag-verde-bg: rgba(52, 211, 153, 0.16);
+
+  /* Realce de item sob o cursor e véu atrás dos modais. Eram `white/5` e
+     `black/60`: no claro, o primeiro some e o segundo apaga a tela. */
+  --hover: rgba(255, 255, 255, 0.05);
+  --overlay: rgba(0, 0, 0, 0.6);
+  /* Marcador de 100% na barra de metas: precisa aparecer por cima da barra
+     colorida nos dois temas. */
+  --marco: rgba(255, 255, 255, 0.8);
+
+  /* Texto por cima do degradê da marca. Fixo nos dois temas: o degradê é
+     claro e saturado, então só um tom escuro se lê sobre ele - no claro,
+     --bg seria quase branco sobre laranja. */
+  --on-brand: #05070A;
+
+  /* Brilho de fundo da página. No escuro é luz; no claro precisa ser quase
+     nada, senão vira mancha colorida. */
+  --glow-cyan: rgba(34, 211, 238, 0.10);
+  --glow-magenta: rgba(232, 121, 249, 0.08);
+  --ring-shadow: 0 0 0 1px rgba(255, 255, 255, 0.04), 0 8px 30px -12px rgba(34, 211, 238, 0.25);
+
   /* Brand gradient, sampled from the GM Studio Gamer logo */
   --brand-cyan: #22D3EE;
   --brand-magenta: #E879F9;
@@ -26,10 +57,46 @@
   --brand-gradient: linear-gradient(90deg, var(--brand-cyan), var(--brand-magenta), var(--brand-orange));
 }
 
+[data-theme="claro"] {
+  /* Cinza-azulado, não branco: branco puro atrás de vidro translúcido não
+     deixa a camada aparecer, e o frio do tom segura o ciano da marca. */
+  --bg: #EEF1F6;
+  /* O vidro continua vidro - vira véu branco sobre o fundo tingido em vez de
+     véu escuro. O campo de formulário (surface-2) fica MAIS branco que o
+     cartão, que é o mesmo degrau de contraste do escuro, invertido. */
+  --surface: rgba(255, 255, 255, 0.72);
+  --surface-2: rgba(255, 255, 255, 0.92);
+  --surface-modal: rgba(252, 253, 255, 0.97);
+  /* Mais presente que no escuro: borda clara sobre fundo claro desaparece. */
+  --border: rgba(15, 23, 42, 0.12);
+  --text: #0F172A;
+  --text-dim: #5A6478;
+
+  /* Os mesmos significados, escurecidos para se lerem sobre fundo claro:
+     #34D399 e #FBBF24 sobre branco são praticamente invisíveis. */
+  --accent-green: #0E9F6E;
+  --accent-red: #DC2626;
+  --accent-amber: #B45309;
+  --accent-blue: #2563EB;
+
+  --tag-vermelho-bg: rgba(220, 38, 38, 0.12);
+  --tag-azul-bg: rgba(37, 99, 235, 0.12);
+  --tag-ambar-bg: rgba(180, 83, 9, 0.12);
+  --tag-verde-bg: rgba(14, 159, 110, 0.12);
+
+  --hover: rgba(15, 23, 42, 0.05);
+  --overlay: rgba(15, 23, 42, 0.35);
+  --marco: rgba(15, 23, 42, 0.55);
+
+  --glow-cyan: rgba(34, 211, 238, 0.07);
+  --glow-magenta: rgba(232, 121, 249, 0.05);
+  --ring-shadow: 0 0 0 1px rgba(15, 23, 42, 0.04), 0 8px 30px -14px rgba(15, 23, 42, 0.18);
+}
+
 body {
   background:
-    radial-gradient(ellipse 900px 600px at 15% -10%, rgba(34, 211, 238, 0.10), transparent),
-    radial-gradient(ellipse 900px 600px at 90% 10%, rgba(232, 121, 249, 0.08), transparent),
+    radial-gradient(ellipse 900px 600px at 15% -10%, var(--glow-cyan), transparent),
+    radial-gradient(ellipse 900px 600px at 90% 10%, var(--glow-magenta), transparent),
     var(--bg);
   color: var(--text);
   min-height: 100vh;
@@ -54,5 +121,5 @@ body {
 }
 
 .glow-ring {
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.04), 0 8px 30px -12px rgba(34, 211, 238, 0.25);
+  box-shadow: var(--ring-shadow);
 }

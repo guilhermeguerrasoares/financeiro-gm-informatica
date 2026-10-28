@@ -57,7 +57,7 @@ export function MetasProgresso({ progressos }: { progressos: ProgressoMeta[] }) 
           return (
             <div
               key={meta.id}
-              className={estourado ? "rounded-lg border border-[var(--accent-red)] bg-red-950/20 p-3 -m-3" : undefined}
+              className={estourado ? "rounded-lg border border-[var(--accent-red)] bg-[var(--tag-vermelho-bg)] p-3 -m-3" : undefined}
             >
               <div className="flex justify-between items-baseline text-sm mb-1.5">
                 <span className="font-medium">{meta.nome}</span>
@@ -78,7 +78,7 @@ export function MetasProgresso({ progressos }: { progressos: ProgressoMeta[] }) 
                       }}
                     />
                     <div
-                      className="absolute top-0 bottom-0 w-[2px] bg-white/80"
+                      className="absolute top-0 bottom-0 w-[2px] bg-[var(--marco)]"
                       style={{ left: `${Math.min(100, Math.max(0, meta.valor_alvo))}%` }}
                       title={`${meta.tipo === "limite" ? "Limite" : "Meta"}: ${meta.valor_alvo}%`}
                     />

@@ -8,10 +8,10 @@ const LABEL: Record<StatusLancamento, string> = {
 };
 
 const COLOR: Record<StatusLancamento, string> = {
-  atrasado: "bg-red-950 text-[var(--accent-red)]",
-  aberto: "bg-blue-950 text-[var(--accent-blue)]",
-  parcial: "bg-amber-950 text-[var(--accent-amber)]",
-  quitado: "bg-emerald-950 text-[var(--accent-green)]",
+  atrasado: "bg-[var(--tag-vermelho-bg)] text-[var(--accent-red)]",
+  aberto: "bg-[var(--tag-azul-bg)] text-[var(--accent-blue)]",
+  parcial: "bg-[var(--tag-ambar-bg)] text-[var(--accent-amber)]",
+  quitado: "bg-[var(--tag-verde-bg)] text-[var(--accent-green)]",
 };
 
 export function StatusTag({ status }: { status: StatusLancamento }) {

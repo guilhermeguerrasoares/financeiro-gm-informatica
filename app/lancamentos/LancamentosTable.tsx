@@ -179,7 +179,7 @@ function TipoTag({ tipo }: { tipo: LancamentoRow["tipo"] }) {
   return (
     <span
       className={`text-xs font-semibold px-2 py-1 rounded-full ${
-        ehEntrada ? "bg-emerald-950 text-[var(--accent-green)]" : "bg-red-950 text-[var(--accent-red)]"
+        ehEntrada ? "bg-[var(--tag-verde-bg)] text-[var(--accent-green)]" : "bg-[var(--tag-vermelho-bg)] text-[var(--accent-red)]"
       }`}
     >
       {ehEntrada ? "Entrada" : "Saída"}

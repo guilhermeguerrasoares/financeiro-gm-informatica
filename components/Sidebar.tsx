@@ -18,6 +18,7 @@ import {
   KeyRound,
 } from "lucide-react";
 import { logout } from "@/app/login/actions";
+import { TemaToggle } from "./TemaToggle";
 
 const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -58,8 +59,8 @@ export function Sidebar({ userEmail }: { userEmail: string | null }) {
                   href={item.href}
                   className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm transition-colors ${
                     ativo
-                      ? "text-[var(--bg)] font-semibold"
-                      : "text-[var(--text-dim)] hover:bg-white/5 hover:text-[var(--text)]"
+                      ? "text-[var(--on-brand)] font-semibold"
+                      : "text-[var(--text-dim)] hover:bg-[var(--hover)] hover:text-[var(--text)]"
                   }`}
                   style={ativo ? { background: "var(--brand-gradient)" } : undefined}
                 >
@@ -71,33 +72,36 @@ export function Sidebar({ userEmail }: { userEmail: string | null }) {
           })}
         </ul>
 
-        {userEmail && (
-          <div className="pt-3 mt-3 border-t border-[var(--border)]">
-            <p className="px-3 text-xs text-[var(--text-dim)] truncate mb-1" title={userEmail}>
-              {userEmail}
-            </p>
-            <Link
-              href="/senha"
-              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm transition-colors ${
-                pathname === "/senha"
-                  ? "bg-white/5 text-[var(--text)]"
-                  : "text-[var(--text-dim)] hover:bg-white/5 hover:text-[var(--text)]"
-              }`}
-            >
-              <KeyRound size={16} strokeWidth={2} className="shrink-0" />
-              Alterar senha
-            </Link>
-            <form action={logout}>
-              <button
-                type="submit"
-                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm text-[var(--text-dim)] hover:bg-white/5 hover:text-[var(--accent-red)] transition-colors"
+        <div className="pt-3 mt-3 border-t border-[var(--border)]">
+          <TemaToggle />
+          {userEmail && (
+            <>
+              <p className="px-3 text-xs text-[var(--text-dim)] truncate mb-1 mt-1" title={userEmail}>
+                {userEmail}
+              </p>
+              <Link
+                href="/senha"
+                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm transition-colors ${
+                  pathname === "/senha"
+                    ? "bg-[var(--hover)] text-[var(--text)]"
+                    : "text-[var(--text-dim)] hover:bg-[var(--hover)] hover:text-[var(--text)]"
+                }`}
               >
-                <LogOut size={16} strokeWidth={2} className="shrink-0" />
-                Sair
-              </button>
-            </form>
-          </div>
-        )}
+                <KeyRound size={16} strokeWidth={2} className="shrink-0" />
+                Alterar senha
+              </Link>
+              <form action={logout}>
+                <button
+                  type="submit"
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm text-[var(--text-dim)] hover:bg-[var(--hover)] hover:text-[var(--accent-red)] transition-colors"
+                >
+                  <LogOut size={16} strokeWidth={2} className="shrink-0" />
+                  Sair
+                </button>
+              </form>
+            </>
+          )}
+        </div>
       </div>
     </nav>
   );
