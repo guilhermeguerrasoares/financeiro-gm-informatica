@@ -1,5 +1,6 @@
 import { round2, saldo, status as calcStatus, totalPago } from "./calculations";
 import type { LancamentoRow, Categoria, PagamentoRow } from "./types";
+import { entraNosRelatorios } from "./exclusoes";
 
 export type LinhaFrenteNegocio = {
   frente: "pecas_acessorios" | "computadores" | "assistencia_tecnica" | "outros";
@@ -17,7 +18,7 @@ export function agruparPorFrenteNegocio(
   const acumulado = new Map<string, { receita: number; custo: number }>();
 
   for (const l of lancamentos) {
-    if (l.tipo !== "receita" || l.ajuste_saldo) continue;
+    if (l.tipo !== "receita" || !entraNosRelatorios(l)) continue;
     const frente = l.categoria_id ? frenteDaCategoria.get(l.categoria_id) : null;
     if (!frente) continue;
 
@@ -60,7 +61,7 @@ export function agruparPorCategoria(
   const acumulado = new Map<string, { total: number; pago: number; vencido: number }>();
 
   for (const l of lancamentos) {
-    if (l.tipo !== "despesa" || l.ajuste_saldo) continue;
+    if (l.tipo !== "despesa" || !entraNosRelatorios(l)) continue;
     const nome = l.categoria_id ? nomeCategoria.get(l.categoria_id) ?? "Outros" : "Outros";
     const atual = acumulado.get(nome) ?? { total: 0, pago: 0, vencido: 0 };
     atual.total += l.valor;

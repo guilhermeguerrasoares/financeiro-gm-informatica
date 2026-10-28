@@ -57,7 +57,7 @@ export function MetasList({ metas, categorias }: { metas: Meta[]; categorias: Ca
               <td>
                 <span
                   className={`text-xs font-semibold px-2 py-1 rounded-full ${
-                    m.ativo ? "bg-emerald-950 text-[var(--accent-green)]" : "bg-[var(--surface-2)] text-[var(--text-dim)]"
+                    m.ativo ? "bg-[var(--tag-verde-bg)] text-[var(--accent-green)]" : "bg-[var(--surface-2)] text-[var(--text-dim)]"
                   }`}
                 >
                   {m.ativo ? "Ativa" : "Pausada"}

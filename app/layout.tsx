@@ -3,6 +3,14 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Sidebar } from "@/components/Sidebar";
 import { createClient } from "@/lib/supabase/server";
+import { CHAVE_TEMA } from "@/lib/tema";
+
+// Roda antes da primeira pintura, direto no <head>: qualquer coisa que só
+// decida o tema depois da hidratação faz a tela piscar escura a cada
+// carregamento para quem escolheu claro. Por isso a regra do temaInicial()
+// aparece repetida aqui - um script pré-hidratação não importa módulo. O
+// try/catch é porque localStorage lança em janela privada.
+const APLICAR_TEMA = `try{var t=localStorage.getItem(${JSON.stringify(CHAVE_TEMA)});document.documentElement.dataset.theme=t==="claro"?"claro":"escuro"}catch(e){}`;
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,7 +42,13 @@ export default async function RootLayout({
   } = await supabase.auth.getUser();
 
   return (
-    <html lang="pt-BR">
+    // suppressHydrationWarning: o script acima escreve data-theme no <html>
+    // antes da hidratação, então o atributo difere do que o servidor mandou.
+    // É a diferença que queremos, não um erro.
+    <html lang="pt-BR" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: APLICAR_TEMA }} />
+      </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased flex min-h-screen`}>
         <Sidebar userEmail={user?.email ?? null} />
         <main className="flex-1">{children}</main>

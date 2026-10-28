@@ -19,7 +19,7 @@ function lancamento(overrides: Partial<LancamentoRow>): LancamentoRow {
     recorrencia: null, serie_id: null, parcela_numero: null,
     observacao: null,
     created_at: "2026-01-01T00:00:00Z",
-    ajuste_saldo: false,
+    ajuste_saldo: false, transferencia_id: null, movimento_fornecedor: "compra" as const,
     idempotency_key: null,
     ...overrides,
   };
@@ -155,6 +155,30 @@ describe("ajuste de saldo", () => {
     const pagamentos = [
       pagamento({ id: "p-venda", lancamento_id: "venda", valor: 100 }),
       pagamento({ id: "p-ajuste", lancamento_id: "ajuste", valor: 5000 }),
+    ];
+
+    const [progresso] = calcularProgressoMetas(
+      [metaFaturamento],
+      lancamentos,
+      pagamentos,
+      { inicio: "2026-08-01", fim: "2026-08-31" }
+    );
+
+    expect(progresso.faturamento).toBe(100);
+    expect(progresso.atualValor).toBe(100);
+  });
+
+  // Depositar o caixa no banco criaria uma "receita" de R$ 5.000 na conta de
+  // destino. Contá-la no faturamento faria a loja bater a meta do mês
+  // mexendo o próprio dinheiro de lugar.
+  it("não conta a perna de entrada de uma transferência no faturamento", () => {
+    const lancamentos = [
+      lancamento({ id: "venda", tipo: "receita" }),
+      lancamento({ id: "transf-entrada", tipo: "receita", valor: 5000, transferencia_id: "t1", movimento_fornecedor: "compra" as const }),
+    ];
+    const pagamentos = [
+      pagamento({ id: "p-venda", lancamento_id: "venda", valor: 100 }),
+      pagamento({ id: "p-transf", lancamento_id: "transf-entrada", valor: 5000 }),
     ];
 
     const [progresso] = calcularProgressoMetas(

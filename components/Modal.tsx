@@ -26,7 +26,7 @@ export function Modal({
 
   return (
     <div
-      className="fixed inset-0 bg-black/60 flex items-start justify-center p-6 overflow-auto z-50"
+      className="fixed inset-0 bg-[var(--overlay)] flex items-start justify-center p-6 overflow-auto z-50"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div className="bg-[var(--surface-modal)] border-t-4 border-[var(--accent-blue)] rounded-lg w-full max-w-lg">

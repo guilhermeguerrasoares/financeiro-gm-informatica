@@ -27,6 +27,8 @@ export async function listarLancamentos() {
 // era o que zerava a conta de um lançamento a cada edição.
 // `ajuste_saldo` também: quem marca é a RPC registrar_ajuste_saldo, e um
 // lançamento criado à mão nunca é uma conciliação.
+// `transferencia_id` idem: quem preenche é a RPC registrar_transferencia, que
+// grava as duas pernas juntas. Um lançamento avulso nunca é meia transferência.
 // `serie_id`/`parcela_numero` idem: quem preenche é criar_serie_lancamentos.
 // Um lançamento avulso nunca pertence a uma série, e uma edição normal não
 // pode arrancar uma parcela da série dela.
@@ -38,6 +40,7 @@ export async function criarLancamento(
     | "id"
     | "conta_financeira_id"
     | "ajuste_saldo"
+    | "transferencia_id"
     | "recorrencia"
     | "serie_id"
     | "parcela_numero"

@@ -6,9 +6,9 @@ import { ClienteModal } from "./ClienteModal";
 import type { Cliente } from "@/lib/types";
 
 const BADGE: Record<string, string> = {
-  vip: "bg-amber-950 text-[var(--accent-amber)]",
-  recorrente: "bg-blue-950 text-[var(--accent-blue)]",
-  inadimplente: "bg-red-950 text-[var(--accent-red)]",
+  vip: "bg-[var(--tag-ambar-bg)] text-[var(--accent-amber)]",
+  recorrente: "bg-[var(--tag-azul-bg)] text-[var(--accent-blue)]",
+  inadimplente: "bg-[var(--tag-vermelho-bg)] text-[var(--accent-red)]",
   padrao: "bg-[var(--surface-2)] text-[var(--text-dim)]",
 };
 

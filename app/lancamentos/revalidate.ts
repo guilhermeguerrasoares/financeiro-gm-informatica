@@ -8,5 +8,10 @@ export function revalidarPaginasFinanceiras() {
   revalidatePath("/dividas");
   revalidatePath("/relatorios");
   revalidatePath("/fornecedores");
+  // A tela de um fornecedor é rota dinâmica, e o Next revalida o caminho
+  // literal: sem esta linha, informar a dívida ou pagar deixava o cartão
+  // "Devo" mostrando o número velho, e o dono lançava de novo achando que
+  // não tinha gravado. A forma com "[id]" alcança todos os fornecedores.
+  revalidatePath("/fornecedores/[id]", "page");
   revalidatePath("/contas");
 }

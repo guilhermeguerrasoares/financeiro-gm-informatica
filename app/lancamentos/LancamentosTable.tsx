@@ -4,6 +4,9 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import { Pencil, Paperclip, ChevronRight, ChevronDown, Trash2, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { StatusTag } from "@/components/StatusTag";
 import { saldo, status as calcStatus, totalPago, dentroDoPeriodo, ordenarLinhas } from "@/lib/calculations";
+import { classeDoSaldo } from "@/lib/corSituacao";
+import { aceitaPagamento, podeEditarNoFormulario } from "@/lib/fornecedores";
+import { estornarTransferenciaAction } from "@/app/contas/actions";
 import { money, formatDataBR, hoje } from "@/lib/format";
 import type {
   LancamentoRow,
@@ -179,7 +182,7 @@ function TipoTag({ tipo }: { tipo: LancamentoRow["tipo"] }) {
   return (
     <span
       className={`text-xs font-semibold px-2 py-1 rounded-full ${
-        ehEntrada ? "bg-emerald-950 text-[var(--accent-green)]" : "bg-red-950 text-[var(--accent-red)]"
+        ehEntrada ? "bg-[var(--tag-verde-bg)] text-[var(--accent-green)]" : "bg-[var(--tag-vermelho-bg)] text-[var(--accent-red)]"
       }`}
     >
       {ehEntrada ? "Entrada" : "Saída"}
@@ -214,6 +217,23 @@ export function LancamentosTable({
   const [modalOpen, setModalOpen] = useState(false);
   const [editando, setEditando] = useState<LancamentoRow | null>(null);
   const [pagando, setPagando] = useState<{ lancamento: LancamentoRow; falta: number } | null>(null);
+  const [estornandoTransferencia, setEstornandoTransferencia] = useState<string | null>(null);
+
+  async function estornarTransferencia(transferenciaId: string) {
+    if (!confirm("Estornar esta transferência? As duas pernas são apagadas e o dinheiro volta para a conta de origem.")) {
+      return;
+    }
+    setEstornandoTransferencia(transferenciaId);
+    try {
+      await estornarTransferenciaAction(transferenciaId);
+    } catch {
+      // Mensagem montada aqui, e não vinda do erro da action: em produção o
+      // Next troca o texto de erro de Server Action por um genérico.
+      alert("Não foi possível estornar a transferência. Recarregue a página e tente novamente.");
+    } finally {
+      setEstornandoTransferencia(null);
+    }
+  }
   const [expandido, setExpandido] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<"data" | "situacao" | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
@@ -396,6 +416,10 @@ export function LancamentosTable({
         <tbody>
           {linhas.map(({ lancamento, status, falta }) => {
             const pagamentosDoLancamento = pagamentos.filter((p) => p.lancamento_id === lancamento.id);
+            // As duas pernas de uma transferência nascem e morrem juntas. O
+            // banco recusa mexer numa só (migração 0022); esconder os botões
+            // aqui é para o usuário não bater nessa recusa.
+            const ehTransferencia = lancamento.transferencia_id !== null;
             const estaExpandido = expandido === lancamento.id;
             const totalComprovantes = pagamentosDoLancamento.filter((p) => p.comprovante_url).length;
 
@@ -472,16 +496,46 @@ export function LancamentosTable({
                         ajuste
                       </span>
                     )}
+                    {ehTransferencia && (
+                      <span
+                        className="ml-2 px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wide border border-[var(--border)] text-[var(--text-dim)]"
+                        title="Transferência entre contas: muda o saldo das duas, fora do faturamento e do DRE."
+                      >
+                        transferência
+                      </span>
+                    )}
+                    {lancamento.movimento_fornecedor === "ajuste" && (
+                      <span
+                        className="ml-2 px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wide border border-[var(--border)] text-[var(--text-dim)]"
+                        title="Dívida informada com o fornecedor: não saiu dinheiro, e ela se paga pela tela do fornecedor."
+                      >
+                        dívida de fornecedor
+                      </span>
+                    )}
                   </td>
                   <td className="text-[var(--text-dim)]">{nomeCategoria(lancamento.categoria_id)}</td>
                   <td>
                     <StatusTag status={status} />
                   </td>
                   <td className="text-right">{money(lancamento.valor)}</td>
-                  <td className="text-right font-semibold text-[var(--accent-red)]">{money(falta)}</td>
+                  <td className={`text-right font-semibold ${classeDoSaldo(status)}`}>{money(falta)}</td>
                   <td className="text-right">
                     <div className="flex justify-end items-center gap-2">
-                      {falta > 0.004 && (
+                      {ehTransferencia ? (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            estornarTransferencia(lancamento.transferencia_id!);
+                          }}
+                          disabled={estornandoTransferencia === lancamento.transferencia_id}
+                          className="px-3 py-1 text-xs border border-[var(--border)] rounded text-[var(--text-dim)] hover:text-[var(--accent-red)] disabled:opacity-50"
+                        >
+                          {estornandoTransferencia === lancamento.transferencia_id ? "Estornando..." : "Estornar transferência"}
+                        </button>
+                      ) : (
+                        <>
+                      {falta > 0.004 && aceitaPagamento(lancamento) && (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -492,19 +546,23 @@ export function LancamentosTable({
                           Pagar
                         </button>
                       )}
-                      <button
-                        type="button"
-                        aria-label="Editar lançamento"
-                        title="Editar"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditando(lancamento);
-                          setModalOpen(true);
-                        }}
-                        className="p-1.5 rounded text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--surface-2)]"
-                      >
-                        <Pencil size={14} />
-                      </button>
+                      {podeEditarNoFormulario(lancamento) && (
+                        <button
+                          type="button"
+                          aria-label="Editar lançamento"
+                          title="Editar"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditando(lancamento);
+                            setModalOpen(true);
+                          }}
+                          className="p-1.5 rounded text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--surface-2)]"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                      )}
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -521,12 +579,21 @@ export function LancamentosTable({
                                 {p.forma_pagamento ? FORMAS_PAGAMENTO_LABEL[p.forma_pagamento] ?? p.forma_pagamento : "—"}
                               </td>
                               <td className="py-1">
-                                <ContaPagamentoSelect
-                                  pagamentoId={p.id}
-                                  contaAtual={p.conta_financeira_id}
-                                  contas={contas}
-                                  ehPermuta={p.forma_pagamento === "permuta"}
-                                />
+                                {/* Trocar a conta de uma perna de transferência
+                                    desequilibraria os saldos, e o banco recusa:
+                                    aqui a conta só se lê. */}
+                                {ehTransferencia ? (
+                                  <span className="text-[var(--text-dim)]">
+                                    {contas.find((c) => c.id === p.conta_financeira_id)?.nome ?? "—"}
+                                  </span>
+                                ) : (
+                                  <ContaPagamentoSelect
+                                    pagamentoId={p.id}
+                                    contaAtual={p.conta_financeira_id}
+                                    contas={contas}
+                                    ehPermuta={p.forma_pagamento === "permuta"}
+                                  />
+                                )}
                               </td>
                               <td className="py-1 text-right">{money(p.valor)}</td>
                               <td className="py-1 text-right w-32">
@@ -537,7 +604,7 @@ export function LancamentosTable({
                                 )}
                               </td>
                               <td className="py-1 text-right w-8">
-                                <EstornarPagamentoButton pagamentoId={p.id} />
+                                {!ehTransferencia && <EstornarPagamentoButton pagamentoId={p.id} />}
                               </td>
                             </tr>
                           ))}
@@ -559,7 +626,13 @@ export function LancamentosTable({
         </tbody>
       </table>
 
+      {/* `key` remonta o formulário a cada abertura. Sem ela, os estados que
+          nascem do lançamento (tipo, fornecedor, vencimento) guardam o valor
+          da primeira montagem - então editar uma receita mostraria "Saída" e
+          salvar a converteria em despesa. O PagamentoModal abaixo já fazia
+          isso. */}
       <LancamentoModal
+        key={editando?.id ?? "novo"}
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         lancamento={editando}

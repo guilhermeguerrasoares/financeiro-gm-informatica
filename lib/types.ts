@@ -55,6 +55,20 @@ export type LancamentoRow = {
   // Lançamento de conciliação de conta: entra no saldo, fica fora de
   // faturamento, metas, DRE e fluxo (ver migração 0013).
   ajuste_saldo: boolean;
+  // Papel desta linha na dívida com o fornecedor (ver migração 0023):
+  //   'compra'   - o padrão, e o que todo lançamento existente é. Soma na
+  //                dívida pelo que falta pagar dela.
+  //   'ajuste'   - dívida informada pelo dono sem compra lançada ("devo
+  //                6.500"). Nunca tem pagamento, e fica fora de caixa, DRE,
+  //                metas, fluxo, /dividas e dos cards do dashboard.
+  //   'quitacao' - pagamento de dívida informada. Abate o saldo devedor sem
+  //                somar nele, e conta como despesa do mês.
+  movimento_fornecedor: "compra" | "ajuste" | "quitacao";
+  // Liga as duas pernas de uma transferência entre contas - a saída na conta
+  // de origem e a entrada na de destino. Nulo em todo lançamento comum. As
+  // duas pernas mexem em saldo e ficam fora de faturamento, metas, DRE e
+  // fluxo, porque transferir não é vender nem gastar (ver migração 0022).
+  transferencia_id: string | null;
   // Quando a linha foi digitada no sistema - diferente do vencimento, que é
   // a data do movimento. Serve de desempate na ordenação: dois lançamentos
   // do mesmo dia precisam de uma ordem estável entre si.
