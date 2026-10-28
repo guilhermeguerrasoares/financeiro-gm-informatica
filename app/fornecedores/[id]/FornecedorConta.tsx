@@ -4,8 +4,10 @@ import { useMemo, useState } from "react";
 import { StatusTag } from "@/components/StatusTag";
 import { LancamentoModal } from "@/app/lancamentos/LancamentoModal";
 import { AjusteDividaModal } from "./AjusteDividaModal";
+import { PagamentoFornecedorModal } from "./PagamentoFornecedorModal";
 import { saldoDevedor, movimentosDoFornecedor } from "@/lib/fornecedores";
 import { classeDoSaldo } from "@/lib/corSituacao";
+import { round2 } from "@/lib/calculations";
 import { money, formatDataBR, hoje, dataLocal } from "@/lib/format";
 import type {
   Fornecedor,
@@ -44,6 +46,7 @@ export function FornecedorConta({
   const [ate, setAte] = useState("");
   const [ajustando, setAjustando] = useState(false);
   const [comprando, setComprando] = useState(false);
+  const [pagando, setPagando] = useState(false);
 
   const hojeStr = hoje();
 
@@ -66,6 +69,12 @@ export function FornecedorConta({
   );
 
   const emAberto = todos.filter((l) => l.status !== "quitado" && l.lancamento.movimento_fornecedor === "compra");
+  // A parte da dívida que NÃO está lançada compra a compra: o que sobra do
+  // total depois de tirar as compras em aberto são os ajustes menos as
+  // quitações. É esse pedaço que o pagamento solto abate.
+  const dividaInformada = round2(
+    devo - emAberto.filter((l) => l.falta > 0.004).reduce((acc, l) => acc + l.falta, 0)
+  );
   const maisAntiga = emAberto[0];
   const ultimaCompra = todos
     .filter((l) => l.lancamento.movimento_fornecedor === "compra")
@@ -106,6 +115,12 @@ export function FornecedorConta({
             className="px-4 py-1.5 rounded bg-[var(--accent-blue)] text-[var(--bg)] text-sm font-semibold"
           >
             + Adicionar compra
+          </button>
+          <button
+            onClick={() => setPagando(true)}
+            className="px-4 py-1.5 rounded bg-[var(--accent-green)] text-[var(--bg)] text-sm font-semibold"
+          >
+            Registrar pagamento
           </button>
           <button
             onClick={() => setAjustando(true)}
@@ -201,6 +216,16 @@ export function FornecedorConta({
           )}
         </tbody>
       </table>
+
+      <PagamentoFornecedorModal
+        open={pagando}
+        onClose={() => setPagando(false)}
+        fornecedor={fornecedor}
+        linhas={todos}
+        dividaInformada={dividaInformada}
+        categorias={categorias}
+        contas={contas}
+      />
 
       <AjusteDividaModal
         fornecedor={fornecedor}

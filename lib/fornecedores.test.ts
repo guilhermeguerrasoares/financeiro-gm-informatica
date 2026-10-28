@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { saldoDevedor, movimentosDoFornecedor } from "./fornecedores";
+import { saldoDevedor, movimentosDoFornecedor, temCompraEmAberto } from "./fornecedores";
 import type { LancamentoRow, PagamentoRow } from "./types";
 
 function lanc(overrides: Partial<LancamentoRow>): LancamentoRow {
@@ -158,5 +158,28 @@ describe("movimentosDoFornecedor", () => {
 
   it("não traz lançamento de outro fornecedor", () => {
     expect(movimentosDoFornecedor("f1", [lanc({ fornecedor_id: "f2" })], [], "2026-10-28")).toEqual([]);
+  });
+});
+
+// É a pergunta que decide se "paguei R$ 2.000 pro Carlos" pode entrar como
+// quitação solta: se há compra lançada em aberto, o certo é dar baixa nela,
+// senão a mesma despesa conta duas vezes no DRE e a lista fica discordando
+// do topo da tela.
+describe("temCompraEmAberto", () => {
+  it("é verdadeiro quando há compra com saldo", () => {
+    expect(temCompraEmAberto("f1", [lanc({})], [pag({ valor: 400 })])).toBe(true);
+  });
+
+  it("é falso quando todas as compras estão quitadas", () => {
+    expect(temCompraEmAberto("f1", [lanc({})], [pag({ valor: 1000 })])).toBe(false);
+  });
+
+  it("ajuste em aberto não conta como compra em aberto", () => {
+    const ajuste = lanc({ id: "aj", movimento_fornecedor: "ajuste", valor: 6500, vencimento: null });
+    expect(temCompraEmAberto("f1", [ajuste], [])).toBe(false);
+  });
+
+  it("compra em aberto de outro fornecedor não conta", () => {
+    expect(temCompraEmAberto("f1", [lanc({ fornecedor_id: "f2" })], [])).toBe(false);
   });
 });

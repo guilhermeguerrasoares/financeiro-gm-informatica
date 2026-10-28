@@ -55,6 +55,23 @@ export function saldoDevedor(
   return round2(devo);
 }
 
+// Existe compra lançada e ainda em aberto com este fornecedor? É a pergunta
+// que decide se um "paguei R$ 2.000 pra ele" pode entrar como quitação solta
+// ou se o certo é dar baixa numa compra da lista. Ajuste não conta: ele é
+// dívida informada, justamente a que não está lançada compra a compra.
+export function temCompraEmAberto(
+  fornecedorId: string,
+  lancamentos: LancamentoRow[],
+  pagamentos: PagamentoRow[]
+): boolean {
+  return lancamentos.some(
+    (l) =>
+      l.fornecedor_id === fornecedorId &&
+      l.movimento_fornecedor === "compra" &&
+      saldo(l, pagamentos) > 0.004
+  );
+}
+
 // O histórico do fornecedor, na ordem em que ele precisa ser lido: o que está
 // em aberto primeiro, do mais antigo para o mais novo. Essa ordem é
 // funcional, não estética - é ela que responde "qual eu pago primeiro".

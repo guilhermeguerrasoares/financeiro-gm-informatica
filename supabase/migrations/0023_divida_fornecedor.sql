@@ -91,7 +91,82 @@ begin
 end;
 $$;
 
+-- Pagamento de dívida informada: "paguei R$ 2.000 pro Carlos" quando a dívida
+-- dele não está lançada compra a compra. Sai dinheiro de uma conta, conta
+-- como despesa do mês - porque aquela compra nunca foi lançada e portanto
+-- nunca bateu no DRE - e abate o saldo devedor sem somar nele.
+--
+-- Lançamento e pagamento numa função só, que é a transação: uma quitação sem
+-- o pagamento seria uma despesa que não abateu dívida nenhuma, e um pagamento
+-- sem o lançamento tiraria dinheiro da conta sem explicação.
+create function registrar_quitacao_divida_fornecedor(
+  p_fornecedor_id uuid,
+  p_data date,
+  p_valor numeric,
+  p_conta_financeira_id uuid,
+  p_categoria_id uuid,
+  p_forma_pagamento forma_pagamento,
+  p_observacao text,
+  p_idempotency_key uuid
+) returns uuid
+language plpgsql
+as $$
+declare
+  v_lancamento_id uuid;
+begin
+  if p_fornecedor_id is null then
+    raise exception 'Informe o fornecedor que está sendo pago.';
+  end if;
+  if coalesce(p_valor, 0) < 0.005 then
+    raise exception 'Informe um valor maior que zero.';
+  end if;
+  if p_conta_financeira_id is null then
+    raise exception 'Escolha a conta de onde saiu o dinheiro.';
+  end if;
+
+  -- A trava que impede a dupla contagem. Se existe compra lançada e ainda em
+  -- aberto com este fornecedor, o pagamento tem que ser baixa NELA: a compra
+  -- já bateu no DRE no mês dela, pelo valor cheio, paga ou não. Uma quitação
+  -- por cima contaria a mesma despesa duas vezes - e deixaria a compra
+  -- envelhecendo na lista "em aberto" enquanto o "quanto devo" do topo já
+  -- teria descido, a tela discordando dela mesma.
+  if exists (
+    select 1
+    from lancamentos l
+    where l.fornecedor_id = p_fornecedor_id
+      and l.movimento_fornecedor = 'compra'
+      and l.valor - coalesce((select sum(p.valor) from pagamentos p where p.lancamento_id = l.id), 0) > 0.004
+  ) then
+    raise exception 'Este fornecedor tem compras lançadas ainda em aberto. Dê baixa nelas em vez de registrar um pagamento solto, senão a mesma despesa conta duas vezes.';
+  end if;
+
+  insert into lancamentos (
+    descricao, tipo, fornecedor_id, categoria_id, valor, vencimento, competencia,
+    observacao, movimento_fornecedor, idempotency_key, created_at
+  ) values (
+    'Pagamento de dívida',
+    'despesa',
+    p_fornecedor_id,
+    p_categoria_id,
+    p_valor,
+    p_data,
+    to_char(p_data, 'YYYY-MM'),
+    nullif(trim(coalesce(p_observacao, '')), ''),
+    'quitacao',
+    p_idempotency_key,
+    p_data::timestamp + interval '12 hours'
+  ) returning id into v_lancamento_id;
+
+  insert into pagamentos (lancamento_id, valor, forma_pagamento, data_pagamento, conta_financeira_id)
+  values (v_lancamento_id, p_valor, p_forma_pagamento, p_data, p_conta_financeira_id);
+
+  return v_lancamento_id;
+end;
+$$;
+
 alter function registrar_ajuste_divida_fornecedor(uuid, date, numeric, text)
+  set search_path = public, pg_temp;
+alter function registrar_quitacao_divida_fornecedor(uuid, date, numeric, uuid, uuid, forma_pagamento, text, uuid)
   set search_path = public, pg_temp;
 
 -- Sem `security definer`, como as demais: roda como quem chamou, então as

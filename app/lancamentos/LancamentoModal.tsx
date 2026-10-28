@@ -59,6 +59,8 @@ export function LancamentoModal({
   const [valorLancamento, setValorLancamento] = useState(lancamento?.valor ?? 0);
   const [vencimento, setVencimento] = useState(lancamento?.vencimento ?? "");
   const [repeticao, setRepeticao] = useState<Repeticao>("nenhuma");
+  const [tipo, setTipo] = useState<"despesa" | "receita">(lancamento?.tipo ?? "despesa");
+  const [fornecedorId, setFornecedorId] = useState(lancamento?.fornecedor_id ?? fornecedorPadrao ?? "");
   const [perguntandoAlcance, setPerguntandoAlcance] = useState<"editar" | "excluir" | null>(null);
   // Segura o formulário já preenchido enquanto o diálogo de alcance está na
   // tela: a escolha do alcance vem depois do submit, mas antes de gravar.
@@ -139,7 +141,8 @@ export function LancamentoModal({
           <label className="block text-xs text-[var(--text-dim)] mb-1">Tipo</label>
           <select
             name="tipo"
-            defaultValue={lancamento?.tipo ?? "despesa"}
+            value={tipo}
+            onChange={(e) => setTipo(e.target.value as "despesa" | "receita")}
             className="w-full px-3 py-2 rounded bg-[var(--surface-2)] border border-[var(--border)]"
           >
             <option value="despesa">Saída (conta a pagar)</option>
@@ -183,7 +186,8 @@ export function LancamentoModal({
           <label className="block text-xs text-[var(--text-dim)] mb-1">Fornecedor (opcional)</label>
           <select
             name="fornecedor_id"
-            defaultValue={lancamento?.fornecedor_id ?? fornecedorPadrao ?? ""}
+            value={fornecedorId}
+            onChange={(e) => setFornecedorId(e.target.value)}
             className="w-full px-3 py-2 rounded bg-[var(--surface-2)] border border-[var(--border)]"
           >
             <option value="">Nenhum</option>
@@ -194,6 +198,28 @@ export function LancamentoModal({
             ))}
           </select>
         </div>
+
+        {/* Uma saída de R$ 2.000 vinculada ao fornecedor é ambígua: pode ser
+            compra nova paga na hora (soma 2.000 na dívida e paga 2.000, dá
+            zero) ou pagamento da dívida velha (abate 2.000). Só quem lança
+            sabe qual é, e sem perguntar o sistema trataria todo pagamento
+            como compra nova - a dívida nunca desceria.
+
+            Não aparece em série: ninguém parcela a quitação de uma dívida que
+            já existe. */}
+        {tipo === "despesa" && fornecedorId && repeticao === "nenhuma" && (
+          <div className="col-span-2">
+            <label className="block text-xs text-[var(--text-dim)] mb-1">O que é esta saída</label>
+            <select
+              name="movimento_fornecedor"
+              defaultValue={lancamento?.movimento_fornecedor ?? "compra"}
+              className="w-full px-3 py-2 rounded bg-[var(--surface-2)] border border-[var(--border)]"
+            >
+              <option value="compra">Compra nova (soma na dívida com o fornecedor)</option>
+              <option value="quitacao">Pagamento de dívida (abate a dívida)</option>
+            </select>
+          </div>
+        )}
 
         <div>
           <label className="block text-xs text-[var(--text-dim)] mb-1">Vencimento</label>

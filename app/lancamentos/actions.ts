@@ -6,7 +6,10 @@ import {
   criarLancamento,
   atualizarLancamento,
   excluirLancamento,
+  listarLancamentos,
 } from "@/lib/queries/lancamentos";
+import { listarPagamentos } from "@/lib/queries/pagamentos";
+import { temCompraEmAberto } from "@/lib/fornecedores";
 import {
   reverterItemPermutaPorLancamento,
   buscarItensPermutaPorLancamentoOrigem,
@@ -140,22 +143,49 @@ export async function salvarLancamentoAction(formData: FormData) {
     }
   }
 
+  const fornecedorId = (formData.get("fornecedor_id") as string) || null;
+  const movimentoFornecedor =
+    fornecedorId && formData.get("movimento_fornecedor") === "quitacao" ? ("quitacao" as const) : ("compra" as const);
+
+  // A trava contra a dupla contagem. Se há compra lançada e ainda em aberto
+  // com este fornecedor, o pagamento tem que ser baixa NELA: a compra já
+  // contou como despesa no mês em que foi lançada, pelo valor cheio, paga ou
+  // não. Uma quitação por cima contaria a mesma despesa duas vezes - e
+  // deixaria a compra envelhecendo em "em aberto" enquanto o "quanto devo"
+  // do fornecedor já teria descido, a tela discordando dela mesma.
+  //
+  // Devolvido como valor, não como exceção: em produção o Next redige a
+  // mensagem de Server Action, e esta precisa ser lida para o dono saber o
+  // que fazer em vez disso.
+  if (movimentoFornecedor === "quitacao" && fornecedorId) {
+    const [todosLancamentos, todosPagamentos] = await Promise.all([listarLancamentos(), listarPagamentos()]);
+    if (temCompraEmAberto(fornecedorId, todosLancamentos, todosPagamentos)) {
+      return {
+        lancamento: null,
+        aviso: null,
+        erro:
+          "Este fornecedor tem compras lançadas ainda em aberto. Dê baixa nelas pela tela do fornecedor em vez de registrar um pagamento solto — a compra já contou como despesa no mês dela, e um pagamento por cima contaria a mesma despesa duas vezes.",
+      };
+    }
+  }
+
   const input = {
     descricao: formData.get("descricao") as string,
     tipo: formData.get("tipo") as "despesa" | "receita",
     categoria_id: (formData.get("categoria_id") as string) || null,
     cliente_id: (formData.get("cliente_id") as string) || null,
-    fornecedor_id: (formData.get("fornecedor_id") as string) || null,
+    fornecedor_id: fornecedorId,
     equipamento_id: null,
     valor: Number(formData.get("valor")),
     custo: formData.get("custo") ? Number(formData.get("custo")) : null,
     vencimento: (formData.get("vencimento") as string) || null,
     competencia: (formData.get("vencimento") as string)?.slice(0, 7) || null,
     observacao: (formData.get("observacao") as string) || null,
-    // Toda despesa lançada aqui é compra. O formulário ainda não pergunta
-    // "compra nova ou pagamento de dívida" - quando perguntar, é este campo
-    // que ele preenche. Ajuste e quitação nascem por RPC, não por aqui.
-    movimento_fornecedor: "compra" as const,
+    // "Compra nova" ou "pagamento de dívida", quando há fornecedor. Sem
+    // fornecedor a pergunta não aparece e a linha é compra - que é o que
+    // todo lançamento sem fornecedor sempre foi. Ajuste nasce por RPC, nunca
+    // por aqui.
+    movimento_fornecedor: movimentoFornecedor,
   };
 
   const lancamento = id
