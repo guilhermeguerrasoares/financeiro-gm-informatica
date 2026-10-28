@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Modal } from "@/components/Modal";
 import { ModalError } from "@/components/ModalError";
 import { ajustarDividaAction } from "./actions";
@@ -26,6 +26,15 @@ export function AjusteDividaModal({
   const [dividaReal, setDividaReal] = useState<number | "">("");
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
+  // Identifica ESTE preenchimento do formulário, renovado a cada abertura.
+  // Sem ela, um Enter dentro de um campo reenvia o form e grava um segundo
+  // ajuste com a mesma diferença - quem informou "devo 6.500" sobre dívida
+  // zero ficaria devendo 13.000. Quem recusa o reenvio é o banco (0021).
+  const [chave, setChave] = useState("");
+
+  useEffect(() => {
+    if (open) setChave(crypto.randomUUID());
+  }, [open]);
 
   const diferenca = dividaReal === "" ? 0 : round2(dividaReal - dividaSistema);
   const semDiferenca = Math.abs(diferenca) < 0.005;
@@ -50,6 +59,7 @@ export function AjusteDividaModal({
       >
         <input type="hidden" name="fornecedor_id" value={fornecedor.id} />
         <input type="hidden" name="divida_sistema" value={dividaSistema} />
+        <input type="hidden" name="idempotency_key" value={chave} />
         <ModalError mensagem={erro} />
 
         <div className="col-span-2 rounded border border-[var(--border)] bg-[var(--surface-2)] p-3">

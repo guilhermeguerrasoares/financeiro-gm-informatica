@@ -48,7 +48,8 @@ create function registrar_ajuste_divida_fornecedor(
   p_fornecedor_id uuid,
   p_data date,
   p_diferenca numeric,
-  p_observacao text
+  p_observacao text,
+  p_idempotency_key uuid
 ) returns uuid
 language plpgsql
 as $$
@@ -71,7 +72,7 @@ begin
   -- cairia na véspera lá - mesma escolha da migração 0020.
   insert into lancamentos (
     descricao, tipo, fornecedor_id, valor, vencimento, competencia,
-    observacao, movimento_fornecedor, created_at
+    observacao, movimento_fornecedor, idempotency_key, created_at
   ) values (
     'Ajuste de dívida',
     -- Cast explícito: o `case` devolve text e a coluna é do enum
@@ -84,6 +85,7 @@ begin
     to_char(p_data, 'YYYY-MM'),
     nullif(trim(coalesce(p_observacao, '')), ''),
     'ajuste',
+    p_idempotency_key,
     p_data::timestamp + interval '12 hours'
   ) returning id into v_lancamento_id;
 
@@ -164,7 +166,54 @@ begin
 end;
 $$;
 
-alter function registrar_ajuste_divida_fornecedor(uuid, date, numeric, text)
+-- O ajuste não é conta a pagar: ele AFIRMA a dívida, e quem a paga é uma
+-- quitação. Um pagamento registrado direto nele tiraria o dinheiro do saldo
+-- da conta - lib/saldos.ts conta qualquer pagamento, sem olhar o tipo da
+-- linha - sem abater um centavo da dívida, porque o ajuste entra no saldo
+-- devedor pelo valor, não pelo que foi pago. Dinheiro sumiria do caixa e a
+-- dívida ficaria igual.
+--
+-- E converter um ajuste em compra pela edição comum transforma um ajuste que
+-- DIMINUIU a dívida - gravado como receita - em faturamento que nunca
+-- existiu, entrando no DRE e no denominador de toda meta percentual.
+--
+-- As telas já escondem os dois caminhos, mas quem precisa recusar é o banco,
+-- porque é o único ponto por onde todos eles passam - mesmo raciocínio da
+-- 0021 e da 0022.
+create function proteger_ajuste_divida() returns trigger
+language plpgsql
+as $$
+declare
+  v_movimento movimento_fornecedor;
+begin
+  if tg_table_name = 'pagamentos' then
+    select movimento_fornecedor into v_movimento
+    from lancamentos where id = new.lancamento_id;
+
+    if v_movimento = 'ajuste' then
+      raise exception 'Ajuste de dívida não recebe pagamento: ele apenas informa quanto você deve. Registre o pagamento pela tela do fornecedor, que abate a dívida e lança a despesa do mês.';
+    end if;
+    return new;
+  end if;
+
+  -- lancamentos
+  if old.movimento_fornecedor = 'ajuste' and new.movimento_fornecedor <> 'ajuste' then
+    raise exception 'Esta linha é um ajuste de dívida com fornecedor e não pode virar compra: ela não representa dinheiro que entrou ou saiu. Exclua-a e informe a dívida de novo, se for o caso.';
+  end if;
+  return new;
+end;
+$$;
+
+create trigger trg_pagamentos_ajuste_protegido
+  before insert or update on pagamentos
+  for each row execute function proteger_ajuste_divida();
+
+create trigger trg_lancamentos_ajuste_protegido
+  before update on lancamentos
+  for each row execute function proteger_ajuste_divida();
+
+alter function proteger_ajuste_divida() set search_path = public, pg_temp;
+alter function registrar_ajuste_divida_fornecedor(uuid, date, numeric, text, uuid)
   set search_path = public, pg_temp;
 alter function registrar_quitacao_divida_fornecedor(uuid, date, numeric, uuid, uuid, forma_pagamento, text, uuid)
   set search_path = public, pg_temp;

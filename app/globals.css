@@ -74,7 +74,10 @@
 
   /* Os mesmos significados, escurecidos para se lerem sobre fundo claro:
      #34D399 e #FBBF24 sobre branco são praticamente invisíveis. */
-  --accent-green: #0E9F6E;
+  /* Mais escuro que o verde do tema escuro por dois motivos: como texto,
+     para se ler sobre fundo claro; e como fundo de botão, porque o rótulo
+     por cima dele usa --bg, e #0E9F6E não chegava a 4,5:1. */
+  --accent-green: #047857;
   --accent-red: #DC2626;
   --accent-amber: #B45309;
   --accent-blue: #2563EB;

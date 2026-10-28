@@ -5,6 +5,7 @@ import { Pencil, Paperclip, ChevronRight, ChevronDown, Trash2, ArrowUp, ArrowDow
 import { StatusTag } from "@/components/StatusTag";
 import { saldo, status as calcStatus, totalPago, dentroDoPeriodo, ordenarLinhas } from "@/lib/calculations";
 import { classeDoSaldo } from "@/lib/corSituacao";
+import { aceitaPagamento, podeEditarNoFormulario } from "@/lib/fornecedores";
 import { estornarTransferenciaAction } from "@/app/contas/actions";
 import { money, formatDataBR, hoje } from "@/lib/format";
 import type {
@@ -503,6 +504,14 @@ export function LancamentosTable({
                         transferência
                       </span>
                     )}
+                    {lancamento.movimento_fornecedor === "ajuste" && (
+                      <span
+                        className="ml-2 px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wide border border-[var(--border)] text-[var(--text-dim)]"
+                        title="Dívida informada com o fornecedor: não saiu dinheiro, e ela se paga pela tela do fornecedor."
+                      >
+                        dívida de fornecedor
+                      </span>
+                    )}
                   </td>
                   <td className="text-[var(--text-dim)]">{nomeCategoria(lancamento.categoria_id)}</td>
                   <td>
@@ -526,7 +535,7 @@ export function LancamentosTable({
                         </button>
                       ) : (
                         <>
-                      {falta > 0.004 && (
+                      {falta > 0.004 && aceitaPagamento(lancamento) && (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -537,19 +546,21 @@ export function LancamentosTable({
                           Pagar
                         </button>
                       )}
-                      <button
-                        type="button"
-                        aria-label="Editar lançamento"
-                        title="Editar"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditando(lancamento);
-                          setModalOpen(true);
-                        }}
-                        className="p-1.5 rounded text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--surface-2)]"
-                      >
-                        <Pencil size={14} />
-                      </button>
+                      {podeEditarNoFormulario(lancamento) && (
+                        <button
+                          type="button"
+                          aria-label="Editar lançamento"
+                          title="Editar"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditando(lancamento);
+                            setModalOpen(true);
+                          }}
+                          className="p-1.5 rounded text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--surface-2)]"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                      )}
                         </>
                       )}
                     </div>
@@ -615,7 +626,13 @@ export function LancamentosTable({
         </tbody>
       </table>
 
+      {/* `key` remonta o formulário a cada abertura. Sem ela, os estados que
+          nascem do lançamento (tipo, fornecedor, vencimento) guardam o valor
+          da primeira montagem - então editar uma receita mostraria "Saída" e
+          salvar a converteria em despesa. O PagamentoModal abaixo já fazia
+          isso. */}
       <LancamentoModal
+        key={editando?.id ?? "novo"}
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         lancamento={editando}

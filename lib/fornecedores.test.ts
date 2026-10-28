@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { saldoDevedor, movimentosDoFornecedor, temCompraEmAberto } from "./fornecedores";
+import {
+  saldoDevedor,
+  movimentosDoFornecedor,
+  temCompraEmAberto,
+  aceitaPagamento,
+  podeEditarNoFormulario,
+} from "./fornecedores";
 import type { LancamentoRow, PagamentoRow } from "./types";
 
 function lanc(overrides: Partial<LancamentoRow>): LancamentoRow {
@@ -181,5 +187,42 @@ describe("temCompraEmAberto", () => {
 
   it("compra em aberto de outro fornecedor não conta", () => {
     expect(temCompraEmAberto("f1", [lanc({ fornecedor_id: "f2" })], [])).toBe(false);
+  });
+});
+
+// Um ajuste não é conta a pagar: ele afirma a dívida. Se a tela oferecer
+// "Pagar" nele, o pagamento tira o dinheiro do saldo da conta (lib/saldos.ts
+// conta qualquer pagamento) e a dívida não desce um centavo, porque o ajuste
+// entra em saldoDevedor pelo valor, não pelo que foi pago. Dinheiro some e a
+// dívida fica igual.
+describe("aceitaPagamento", () => {
+  it("compra aceita pagamento", () => {
+    expect(aceitaPagamento({ movimento_fornecedor: "compra" })).toBe(true);
+  });
+
+  it("quitação aceita pagamento", () => {
+    expect(aceitaPagamento({ movimento_fornecedor: "quitacao" })).toBe(true);
+  });
+
+  it("ajuste de dívida não aceita pagamento", () => {
+    expect(aceitaPagamento({ movimento_fornecedor: "ajuste" })).toBe(false);
+  });
+});
+
+// Editar um ajuste pelo formulário comum o converte em compra, porque o
+// campo só oferece compra e quitação. Num ajuste que DIMINUIU a dívida - que
+// é gravado como receita - isso vira faturamento que nunca existiu, entrando
+// no DRE e no denominador de toda meta percentual.
+describe("podeEditarNoFormulario", () => {
+  it("compra comum pode ser editada", () => {
+    expect(podeEditarNoFormulario({ movimento_fornecedor: "compra", transferencia_id: null })).toBe(true);
+  });
+
+  it("ajuste de dívida não pode", () => {
+    expect(podeEditarNoFormulario({ movimento_fornecedor: "ajuste", transferencia_id: null })).toBe(false);
+  });
+
+  it("perna de transferência não pode", () => {
+    expect(podeEditarNoFormulario({ movimento_fornecedor: "compra", transferencia_id: "t1" })).toBe(false);
   });
 });

@@ -36,6 +36,7 @@ export async function registrarAjusteDivida(input: {
   data: string;
   diferenca: number;
   observacao: string | null;
+  idempotency_key: string | null;
 }) {
   const supabase = await createClient();
   const { error } = await supabase.rpc("registrar_ajuste_divida_fornecedor", {
@@ -43,8 +44,16 @@ export async function registrarAjusteDivida(input: {
     p_data: input.data,
     p_diferenca: input.diferenca,
     p_observacao: input.observacao,
+    p_idempotency_key: input.idempotency_key,
   });
-  if (error) throw error;
+
+  if (error) {
+    // Mesmo no-op de criarLancamento: reenvio do mesmo preenchimento é
+    // recusado pelo índice da 0021, e a primeira gravação já valeu. Sem isso,
+    // um Enter dentro de um campo dobraria a dívida informada.
+    if (error.code === "23505" && input.idempotency_key) return;
+    throw error;
+  }
 }
 
 // Pagamento de dívida informada: lançamento de despesa + baixa, numa

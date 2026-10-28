@@ -26,6 +26,7 @@ export async function ajustarDividaAction(formData: FormData) {
     data: formData.get("data") as string,
     diferenca,
     observacao: (formData.get("observacao") as string) || null,
+    idempotency_key: (formData.get("idempotency_key") as string) || null,
   });
 
   revalidarPaginasFinanceiras();

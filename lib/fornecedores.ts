@@ -72,6 +72,28 @@ export function temCompraEmAberto(
   );
 }
 
+// Um ajuste não é conta a pagar: ele afirma a dívida, e quem a paga é uma
+// quitação. Oferecer "Pagar" nele tiraria o dinheiro do saldo da conta - que
+// conta qualquer pagamento, sem olhar para que tipo de linha ele pertence -
+// sem abater um centavo da dívida, porque o ajuste entra em saldoDevedor pelo
+// valor, não pelo que foi pago. O banco recusa esse pagamento (migração
+// 0023); isto aqui é para o usuário não bater na recusa.
+export function aceitaPagamento(l: Pick<LancamentoRow, "movimento_fornecedor">): boolean {
+  return l.movimento_fornecedor !== "ajuste";
+}
+
+// Linhas que o formulário comum de lançamento não pode editar, porque ele não
+// sabe representá-las: o campo "o que é esta saída" só oferece compra e
+// quitação, então salvar um ajuste por ali o converteria em compra - e um
+// ajuste que diminuiu a dívida, gravado como receita, viraria faturamento que
+// nunca existiu. A perna de transferência tem o mesmo problema por outro
+// motivo: ela só existe em par.
+export function podeEditarNoFormulario(
+  l: Pick<LancamentoRow, "movimento_fornecedor" | "transferencia_id">
+): boolean {
+  return l.movimento_fornecedor !== "ajuste" && l.transferencia_id === null;
+}
+
 // O histórico do fornecedor, na ordem em que ele precisa ser lido: o que está
 // em aberto primeiro, do mais antigo para o mais novo. Essa ordem é
 // funcional, não estética - é ela que responde "qual eu pago primeiro".
