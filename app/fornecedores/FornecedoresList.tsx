@@ -11,7 +11,7 @@ import type { Fornecedor } from "@/lib/types";
 export function FornecedoresList({
   linhas,
 }: {
-  linhas: { fornecedor: Fornecedor; total: number; falta: number; qtdLancamentos: number }[];
+  linhas: { fornecedor: Fornecedor; total: number; devo: number; qtdLancamentos: number }[];
 }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [editando, setEditando] = useState<Fornecedor | null>(null);
@@ -31,7 +31,7 @@ export function FornecedoresList({
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        {linhas.map(({ fornecedor, total, falta, qtdLancamentos }) => (
+        {linhas.map(({ fornecedor, total, devo, qtdLancamentos }) => (
           <Link
             key={fornecedor.id}
             href={`/fornecedores/${fornecedor.id}`}
@@ -84,9 +84,9 @@ export function FornecedoresList({
               <span>{money(total)}</span>
             </div>
             <div className="flex justify-between text-sm font-semibold">
-              <span className="text-[var(--text-dim)]">Falta pagar</span>
-              <span className={falta > 0.004 ? "text-[var(--accent-red)]" : "text-[var(--accent-green)]"}>
-                {money(falta)}
+              <span className="text-[var(--text-dim)]">Devo</span>
+              <span className={devo > 0.004 ? "text-[var(--accent-red)]" : "text-[var(--accent-green)]"}>
+                {money(devo)}
               </span>
             </div>
           </Link>

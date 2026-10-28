@@ -22,6 +22,7 @@ export function LancamentoModal({
   clientes,
   fornecedores,
   contas,
+  fornecedorPadrao,
 }: {
   open: boolean;
   onClose: () => void;
@@ -30,6 +31,10 @@ export function LancamentoModal({
   clientes: Cliente[];
   fornecedores: Fornecedor[];
   contas: ContaFinanceira[];
+  // Quando o formulário é aberto de dentro da tela de um fornecedor, ele já
+  // nasce com esse fornecedor escolhido. Vale só na criação: numa edição quem
+  // manda é o fornecedor que o lançamento já tem.
+  fornecedorPadrao?: string;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -178,7 +183,7 @@ export function LancamentoModal({
           <label className="block text-xs text-[var(--text-dim)] mb-1">Fornecedor (opcional)</label>
           <select
             name="fornecedor_id"
-            defaultValue={lancamento?.fornecedor_id ?? ""}
+            defaultValue={lancamento?.fornecedor_id ?? fornecedorPadrao ?? ""}
             className="w-full px-3 py-2 rounded bg-[var(--surface-2)] border border-[var(--border)]"
           >
             <option value="">Nenhum</option>
