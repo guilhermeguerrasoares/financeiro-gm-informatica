@@ -1,5 +1,6 @@
 import type { LancamentoRow, Meta, PagamentoRow } from "./types";
 import { round2 } from "./calculations";
+import { entraNosRelatorios } from "./exclusoes";
 
 export type StatusMeta = "ok" | "atencao" | "estourado" | "atingida";
 
@@ -16,7 +17,7 @@ function somaFaturamento(lancamentos: LancamentoRow[], pagamentos: PagamentoRow[
   // Ajuste de conciliação mexe no saldo da conta, mas não é venda. Contá-lo
   // aqui inflaria o denominador de toda meta percentual.
   const idsReceita = new Set(
-    lancamentos.filter((l) => l.tipo === "receita" && !l.ajuste_saldo).map((l) => l.id)
+    lancamentos.filter((l) => l.tipo === "receita" && entraNosRelatorios(l)).map((l) => l.id)
   );
   return round2(
     pagamentos

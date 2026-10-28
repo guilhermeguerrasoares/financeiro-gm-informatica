@@ -55,6 +55,11 @@ export type LancamentoRow = {
   // Lançamento de conciliação de conta: entra no saldo, fica fora de
   // faturamento, metas, DRE e fluxo (ver migração 0013).
   ajuste_saldo: boolean;
+  // Liga as duas pernas de uma transferência entre contas - a saída na conta
+  // de origem e a entrada na de destino. Nulo em todo lançamento comum. As
+  // duas pernas mexem em saldo e ficam fora de faturamento, metas, DRE e
+  // fluxo, porque transferir não é vender nem gastar (ver migração 0022).
+  transferencia_id: string | null;
   // Quando a linha foi digitada no sistema - diferente do vencimento, que é
   // a data do movimento. Serve de desempate na ordenação: dois lançamentos
   // do mesmo dia precisam de uma ordem estável entre si.
