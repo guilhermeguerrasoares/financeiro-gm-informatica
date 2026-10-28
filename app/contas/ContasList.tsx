@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Trash2 } from "lucide-react";
 import { ContaModal } from "./ContaModal";
 import { AjusteSaldoModal } from "./AjusteSaldoModal";
+import { TransferenciaModal } from "./TransferenciaModal";
 import { excluirContaAction } from "./actions";
 import { money } from "@/lib/format";
 import type { ContaFinanceira } from "@/lib/types";
@@ -20,6 +21,7 @@ export function ContasList({
   saldoConsolidado: number;
 }) {
   const [modalOpen, setModalOpen] = useState(false);
+  const [transferindo, setTransferindo] = useState(false);
   const [ajustando, setAjustando] = useState<ContaFinanceira | null>(null);
   const [excluindo, setExcluindo] = useState<string | null>(null);
 
@@ -49,12 +51,22 @@ export function ContasList({
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <button
-          onClick={() => setModalOpen(true)}
-          className="px-4 py-1.5 rounded bg-[var(--accent-blue)] text-[var(--bg)] text-sm font-semibold"
-        >
-          + Nova conta
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setModalOpen(true)}
+            className="px-4 py-1.5 rounded bg-[var(--accent-blue)] text-[var(--bg)] text-sm font-semibold"
+          >
+            + Nova conta
+          </button>
+          <button
+            onClick={() => setTransferindo(true)}
+            disabled={contas.length < 2}
+            title={contas.length < 2 ? "É preciso ter pelo menos duas contas para transferir." : undefined}
+            className="px-4 py-1.5 rounded border border-[var(--border)] text-sm font-semibold disabled:opacity-50"
+          >
+            Transferir
+          </button>
+        </div>
         <div className="text-right">
           <div className="text-xs text-[var(--text-dim)] uppercase">Saldo consolidado</div>
           <div className="text-xl font-semibold">{money(saldoConsolidado)}</div>
@@ -94,6 +106,13 @@ export function ContasList({
       </div>
 
       <ContaModal open={modalOpen} onClose={() => setModalOpen(false)} />
+
+      <TransferenciaModal
+        open={transferindo}
+        onClose={() => setTransferindo(false)}
+        contas={contas}
+        saldoPorConta={saldoPorConta}
+      />
 
       <AjusteSaldoModal
         key={ajustando?.id ?? "fechado"}

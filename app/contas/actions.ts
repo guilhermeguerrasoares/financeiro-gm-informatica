@@ -7,6 +7,8 @@ import {
   contarPagamentosDaConta,
   excluirContaFinanceira,
 } from "@/lib/queries/contasFinanceiras";
+import { registrarTransferencia, estornarTransferencia } from "@/lib/queries/transferencias";
+import { validarTransferencia } from "@/lib/transferencias";
 import { round2 } from "@/lib/calculations";
 import { revalidarPaginasFinanceiras } from "@/app/lancamentos/revalidate";
 
@@ -31,6 +33,34 @@ export async function ajustarSaldoAction(formData: FormData) {
     observacao: (formData.get("observacao") as string) || null,
   });
 
+  revalidarPaginasFinanceiras();
+}
+
+export async function transferirAction(formData: FormData) {
+  const origemId = (formData.get("conta_origem_id") as string) || "";
+  const destinoId = (formData.get("conta_destino_id") as string) || "";
+  const valor = round2(Number(formData.get("valor")));
+
+  // A mesma recusa que a RPC faz, aqui também: em produção o Next troca o
+  // texto de erro de Server Action por um genérico, então a mensagem que o
+  // usuário lê precisa nascer antes da ida ao banco.
+  const erro = validarTransferencia({ origemId, destinoId, valor });
+  if (erro) throw new Error(erro);
+
+  await registrarTransferencia({
+    conta_origem_id: origemId,
+    conta_destino_id: destinoId,
+    valor,
+    data: formData.get("data") as string,
+    observacao: (formData.get("observacao") as string) || null,
+    idempotency_key: (formData.get("idempotency_key") as string) || null,
+  });
+
+  revalidarPaginasFinanceiras();
+}
+
+export async function estornarTransferenciaAction(transferenciaId: string) {
+  await estornarTransferencia(transferenciaId);
   revalidarPaginasFinanceiras();
 }
 
